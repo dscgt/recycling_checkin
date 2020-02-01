@@ -36,7 +36,7 @@ class AdminState extends State<Admin> {
           type: DataType.string
         ),
         DataProperty(
-          title: 'Vehicle #',
+          title: 'Vehicle # (for fuel card)',
           type: DataType.string
         )
       ]
@@ -57,6 +57,11 @@ class AdminState extends State<Admin> {
     print('test done');
   }
 
+  _handleViewRecords() async {
+    List<Record> records = await getRecords();
+    print(records);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -72,6 +77,10 @@ class AdminState extends State<Admin> {
         RaisedButton(
           onPressed: () => _handleDeleteCategories(),
           child: Text('Delete all categories'),
+        ),
+        RaisedButton(
+          onPressed: () => _handleViewRecords(),
+          child: Text('View records'),
         ),
       ],
     );

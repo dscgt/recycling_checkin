@@ -30,3 +30,18 @@ class DataCategory {
     return 'DataCategory { title: $title, properties: $properties ';
   }
 }
+
+class Record {
+  final String type;
+  final Map<String, dynamic> properties;
+
+  Record({
+    this.type,
+    this.properties
+  });
+
+  @override
+  String toString() {
+    return 'Record { type: $type, properties: $properties ';
+  }
+}
