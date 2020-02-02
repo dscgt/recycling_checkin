@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
 
@@ -26,8 +27,11 @@ class CheckOutState extends State<CheckOut> {
   String checkoutType;
 
   /// Checkout details entered by the user. Defaults to all empty inputs.
-  Map<String, Map<String, dynamic>> availableProperties = {};
+  Map<String, Map<String, TextEditingController>> availableProperties = {};
 
+  /// Form key for the dynamically generated form. May be applied to different
+  /// forms.
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -45,11 +49,12 @@ class CheckOutState extends State<CheckOut> {
         });
       });
 
-      Map<String, Map<String, dynamic>> theseAvailableProperties = {};
+      Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
       categories.forEach((DataCategory dc) {
         theseAvailableProperties[dc.title] = {};
         dc.properties.forEach((DataProperty dp) {
-          theseAvailableProperties[dc.title][dp.title] = null;
+          TextEditingController thisController = TextEditingController();
+          theseAvailableProperties[dc.title][dp.title] = thisController;
         });
       });
 
@@ -69,24 +74,34 @@ class CheckOutState extends State<CheckOut> {
     super.initState();
   }
 
-  void clearInputs() {
+  void clearForm() {
     setState(() {
-      availableProperties.forEach((String category, Map<String, dynamic> property) {
-        property.keys.forEach((String propertyTitle) {
-          availableProperties[category][propertyTitle] = null;
-        });
+      availableProperties[checkoutType].keys.forEach((String propertyTitle) {
+        availableProperties[checkoutType][propertyTitle].clear();
       });
     });
   }
 
   _handleSubmitRecord() async {
+    if (!_formKey.currentState.validate()) {
+      return;
+    }
+
+    Map<String, dynamic> theseProperties = {};
+    availableProperties[checkoutType].forEach((String propertyName, TextEditingController te) {
+      theseProperties[propertyName] = te.text;
+    });
     Record thisRecord = Record(
       type: checkoutType,
-      properties: availableProperties[checkoutType]
+      properties: theseProperties
     );
-
     await submitRecord(thisRecord);
-    clearInputs();
+    Scaffold.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Checkout submitted')
+      )
+    );
+    clearForm();
   }
 
   @override
@@ -95,31 +110,36 @@ class CheckOutState extends State<CheckOut> {
       return Text('Loading...');
     }
 
-    Widget fields = Column(
-      children: availableProperties[checkoutType].entries.map((MapEntry e) {
-        String propertyTitle = e.key;
-        if (availablePropertiesMeta[checkoutType][propertyTitle] == DataType.string) {
-          return Row(
-            children: <Widget>[
-              Text('$propertyTitle: '),
-              Expanded(
-                child: TextField(
-                  onSubmitted: (String value) { _handleSubmitRecord(); },
-                  onChanged: (text) {
-                    // do not use setState; this doesn't need to trigger a UI rebuild
-                    availableProperties[checkoutType][propertyTitle] = text;
-                  },
-                )
-              ),
-            ],
-          );
-        } else {
-          // do nothing for now
-          return Text('UNDER CONSTRUCTION');
-        }
-
-      }).toList()
-    );
+    List<Widget> formElements = [];
+    availableProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
+      TextInputType thisKeyboardType = TextInputType.text;
+      if (availablePropertiesMeta[checkoutType][propertyTitle] == DataType.number) {
+        thisKeyboardType = TextInputType.number;
+      }
+      formElements.add(
+        Row(
+          children: <Widget>[
+            Text('$propertyTitle: '),
+            Expanded(
+              child: TextFormField(
+                controller: availableProperties[checkoutType][propertyTitle],
+                validator: (value) {
+                  if (value.isEmpty) {
+                    return 'Please enter a $propertyTitle.';
+                  }
+                  return null;
+                },
+                keyboardType: thisKeyboardType
+              )
+            ),
+          ],
+        )
+      );
+    });
+    formElements.add(RaisedButton(
+      onPressed: () => _handleSubmitRecord(),
+      child: Text('Check out')
+    ));
 
     return Column(
       children: [
@@ -137,11 +157,12 @@ class CheckOutState extends State<CheckOut> {
             )
           ).toList(),
         ),
-        fields,
-        RaisedButton(
-          onPressed: () => _handleSubmitRecord(),
-          child: Text('Check out')
-        )
+        Form(
+          key: _formKey,
+          child: Column(
+            children: formElements
+          )
+        ),
       ]
     );
   }
