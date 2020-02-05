@@ -50,16 +50,22 @@ Future<List<Classes.Record>> getRecords() async {
   StoreRef store = stringMapStoreFactory.store(dataRecordsName);
   return store.find(db, finder: finder).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
-//      print(snap);
-//      print(snap.key);
-//      print(snap.value);
-//      print(snap.value.runtimeType);
+      // convert snapshot to Record
       Map<String, dynamic> otherProps = Map.fromEntries(snap.value.entries);
       otherProps.remove('type');
-      return Classes.Record(
-        type: snap['type'],
+      otherProps.remove('checkinTime');
+      otherProps.remove('checkoutTime');
+      Classes.Record toReturn = Classes.Record(
+        category: snap['category'],
         properties: otherProps
       );
+      if (snap['checkoutTime'] != null) {
+        toReturn.checkoutTime = DateTime.fromMillisecondsSinceEpoch(snap['checkoutTime'] * 1000);
+      }
+      if (snap['checkinTime'] != null) {
+        toReturn.checkinTime = DateTime.fromMillisecondsSinceEpoch(snap['checkinTime'] * 1000);
+      }
+      return toReturn;
     }).toList();
   });
 }
@@ -87,6 +93,29 @@ Future<String> addDataCategory(Classes.DataCategory category) async {
   return key;
 }
 
+/// Saves the record [record] to local storage.
+Future<dynamic> checkout(Classes.Record record) async {
+  String dbPath = await getDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database db = await dbFactory.openDatabase(dbPath);
+  StoreRef store = stringMapStoreFactory.store(dataRecordsName);
+
+  Map<String, dynamic> toAdd = {
+    'category': record.category,
+    'checkinTime': record.checkinTime,
+    'checkinTime': record.checkoutTime,
+  };
+  toAdd.addAll(record.properties);
+
+  // use current time as checkout time if not specified by record
+  if (toAdd['checkoutTime'] == null) {
+    toAdd['checkoutTime'] = (DateTime.now().millisecondsSinceEpoch / 1000).round();
+  }
+
+  var key = await store.add(db, toAdd);
+  return key;
+}
+
 Future<void> deleteCategories() async {
   String dbPath = await getDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
@@ -97,16 +126,12 @@ Future<void> deleteCategories() async {
   return Future.value();
 }
 
-/// Saves the record [record] to local storage.
-Future<dynamic> submitRecord(Classes.Record record) async {
+Future<void> deleteRecords() async {
   String dbPath = await getDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database db = await dbFactory.openDatabase(dbPath);
   StoreRef store = stringMapStoreFactory.store(dataRecordsName);
 
-  Map<String, dynamic> toAdd = { 'type': record.type };
-  toAdd.addAll(record.properties);
-
-  var key = await store.add(db, toAdd);
-  return key;
+  await store.drop(db);
+  return Future.value();
 }

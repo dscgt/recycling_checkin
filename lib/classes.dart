@@ -32,16 +32,27 @@ class DataCategory {
 }
 
 class Record {
-  final String type;
+  final String category;
   final Map<String, dynamic> properties;
+  DateTime checkoutTime;
+  DateTime checkinTime;
 
   Record({
-    this.type,
-    this.properties
-  });
+    this.category,
+    this.properties,
+    checkinTime,
+    checkoutTime,
+  }) {
+    // don't allow for checkinTimes unless a checkoutTime is also specified
+    if (checkinTime != null && checkoutTime == null) {
+      throw new RangeError('Record with a check-in time cannot be created without a check-out time.');
+    }
+    this.checkoutTime = checkoutTime;
+    this.checkinTime = checkinTime;
+  }
 
   @override
   String toString() {
-    return 'Record { type: $type, properties: $properties ';
+    return 'Record { category: $category, properties: $properties, checkout: $checkoutTime, checkin: $checkinTime} ';
   }
 }

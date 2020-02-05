@@ -20,14 +20,14 @@ class CheckOutState extends State<CheckOut> {
   /// A record of checkout type -> checkout property (ex. Vehicle #, Name,
   /// any detail relevant to a checkout) -> form of that property (ex. string,
   /// number).
-  Map<String, Map<String, dynamic>> availablePropertiesMeta = {};
+  Map<String, Map<String, dynamic>> checkoutPropertiesMeta = {};
 
   /// The type of checkout selected by the user. Defaults to the first checkout
   /// type retrieved.
   String checkoutType;
 
   /// Checkout details entered by the user. Defaults to all empty inputs.
-  Map<String, Map<String, TextEditingController>> availableProperties = {};
+  Map<String, Map<String, TextEditingController>> checkoutProperties = {};
 
   /// Form key for the dynamically generated form. May be applied to different
   /// forms.
@@ -62,11 +62,11 @@ class CheckOutState extends State<CheckOut> {
       // even within initState()
       setState(() {
         availableTypes = theseAvailableTypes;
-        availablePropertiesMeta = theseAvailablePropertiesMeta;
+        checkoutPropertiesMeta = theseAvailablePropertiesMeta;
         checkoutType = availableTypes.length > 0
           ? availableTypes[0]
           : null;
-        availableProperties = theseAvailableProperties;
+        checkoutProperties = theseAvailableProperties;
         loading = false;
       });
     });
@@ -76,8 +76,8 @@ class CheckOutState extends State<CheckOut> {
 
   void clearForm() {
     setState(() {
-      availableProperties[checkoutType].keys.forEach((String propertyTitle) {
-        availableProperties[checkoutType][propertyTitle].clear();
+      checkoutProperties[checkoutType].keys.forEach((String propertyTitle) {
+        checkoutProperties[checkoutType][propertyTitle].clear();
       });
     });
   }
@@ -88,14 +88,14 @@ class CheckOutState extends State<CheckOut> {
     }
 
     Map<String, dynamic> theseProperties = {};
-    availableProperties[checkoutType].forEach((String propertyName, TextEditingController te) {
+    checkoutProperties[checkoutType].forEach((String propertyName, TextEditingController te) {
       theseProperties[propertyName] = te.text;
     });
     Record thisRecord = Record(
-      type: checkoutType,
+      category: checkoutType,
       properties: theseProperties
     );
-    await submitRecord(thisRecord);
+    await checkout(thisRecord);
     Scaffold.of(context).showSnackBar(
       SnackBar(
         content: Text('Checkout submitted')
@@ -111,9 +111,9 @@ class CheckOutState extends State<CheckOut> {
     }
 
     List<Widget> formElements = [];
-    availableProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
+    checkoutProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
       TextInputType thisKeyboardType = TextInputType.text;
-      if (availablePropertiesMeta[checkoutType][propertyTitle] == DataType.number) {
+      if (checkoutPropertiesMeta[checkoutType][propertyTitle] == DataType.number) {
         thisKeyboardType = TextInputType.number;
       }
       formElements.add(
@@ -122,7 +122,7 @@ class CheckOutState extends State<CheckOut> {
             Text('$propertyTitle: '),
             Expanded(
               child: TextFormField(
-                controller: availableProperties[checkoutType][propertyTitle],
+                controller: checkoutProperties[checkoutType][propertyTitle],
                 validator: (value) {
                   if (value.isEmpty) {
                     return 'Please enter a $propertyTitle.';
@@ -136,10 +136,13 @@ class CheckOutState extends State<CheckOut> {
         )
       );
     });
-    formElements.add(RaisedButton(
-      onPressed: () => _handleSubmitRecord(),
-      child: Text('Check out')
-    ));
+    formElements.addAll([
+      RaisedButton(
+        onPressed: () => _handleSubmitRecord(),
+        child: Text('Check out')
+      ),
+      Text('(Date and time will be recorded automatically.)')
+    ]);
 
     return Column(
       children: [

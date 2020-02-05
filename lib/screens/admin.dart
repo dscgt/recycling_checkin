@@ -62,6 +62,11 @@ class AdminState extends State<Admin> {
     print(records);
   }
 
+  _handleDeleteRecords() async {
+    await deleteRecords();
+    print('test done');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -81,6 +86,10 @@ class AdminState extends State<Admin> {
         RaisedButton(
           onPressed: () => _handleViewRecords(),
           child: Text('View records'),
+        ),
+        RaisedButton(
+          onPressed: () => _handleDeleteRecords(),
+          child: Text('Delete records'),
         ),
       ],
     );
