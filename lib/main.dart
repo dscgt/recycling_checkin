@@ -55,20 +55,25 @@ class _MainState extends State<Main> {
   Widget build(BuildContext context) {
 
       Widget toDisplay;
+      String appBarText;
       if (_view == 3) {
         toDisplay = Admin();
+        appBarText = 'Admin Settings';
       } else if (_view == 2) {
         toDisplay = Records();
+        appBarText = 'Records';
       } else if (_view == 1) {
         toDisplay = CheckIn();
+        appBarText = 'Check In';
       } else { // view is 0, or defaults to it
         toDisplay = CheckOut();
+        appBarText = 'Check Out';
       }
 
       return Scaffold(
-//      appBar: AppBar(
-//        title: Text('Check Out'),
-//      ),
+      appBar: AppBar(
+        title: Text(appBarText),
+      ),
         body: toDisplay,
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[

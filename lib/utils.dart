@@ -11,3 +11,7 @@ DataType stringToDataType(String s) {
     return DataType.string;
   }
 }
+
+String dateTimeToString(DateTime dt) {
+  return dt.toString();
+}

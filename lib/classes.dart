@@ -36,12 +36,14 @@ class Record {
   final Map<String, dynamic> properties;
   DateTime checkoutTime;
   DateTime checkinTime;
+  String id;
 
   Record({
     this.category,
     this.properties,
     checkinTime,
     checkoutTime,
+    this.id
   }) {
     // don't allow for checkinTimes unless a checkoutTime is also specified
     if (checkinTime != null && checkoutTime == null) {
@@ -53,6 +55,6 @@ class Record {
 
   @override
   String toString() {
-    return 'Record { category: $category, properties: $properties, checkout: $checkoutTime, checkin: $checkinTime} ';
+    return 'Record { id: $id, category: $category, properties: $properties, checkout: $checkoutTime, checkin: $checkinTime} ';
   }
 }

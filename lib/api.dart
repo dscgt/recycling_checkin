@@ -12,6 +12,8 @@ final String dbName = 'recycling_checkout.db';
 final String dataCategoriesName = 'dataCategories';
 final String dataRecordsName = 'dataRecords';
 
+/// Gets the path on local filesystem that will be used to reference local
+/// storage for Sembast.
 Future<String> getDbPath() async {
   Directory directory = await getApplicationDocumentsDirectory();
   return join(directory.path, 'recycling_checkout.db');
@@ -40,24 +42,34 @@ Future<List<Classes.DataCategory>> getCategories() async {
   });
 }
 
-Future<List<Classes.Record>> getRecords() async {
+/// Gets all checkout records ever submitted, unless [onlyNotCheckedIn] is
+/// specified to true; in this case, gets only the checkout records with a null
+/// or nonexistant checkinTime field, indicating some item that is checked out and
+/// has not been checked back in.
+Future<List<Classes.Record>> getRecords([bool onlyNotCheckedIn = false]) async {
   String dbPath = await getDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database db = await dbFactory.openDatabase(dbPath);
-  Finder finder = Finder(
-    filter: Filter.isNull('thisFieldShouldNotExist')
-  );
+  Filter filter;
+  if (onlyNotCheckedIn) {
+    filter = Filter.isNull('checkinTime');
+  } else {
+    filter = Filter.isNull('thisFieldShouldNotExist');
+  }
   StoreRef store = stringMapStoreFactory.store(dataRecordsName);
-  return store.find(db, finder: finder).then((List<RecordSnapshot> snapshots) {
+  return store.find(db, finder: Finder(
+    filter: filter
+  )).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
       // convert snapshot to Record
       Map<String, dynamic> otherProps = Map.fromEntries(snap.value.entries);
-      otherProps.remove('type');
+      otherProps.remove('category');
       otherProps.remove('checkinTime');
       otherProps.remove('checkoutTime');
       Classes.Record toReturn = Classes.Record(
         category: snap['category'],
-        properties: otherProps
+        properties: otherProps,
+        id: snap.key
       );
       if (snap['checkoutTime'] != null) {
         toReturn.checkoutTime = DateTime.fromMillisecondsSinceEpoch(snap['checkoutTime'] * 1000);
@@ -91,6 +103,19 @@ Future<String> addDataCategory(Classes.DataCategory category) async {
   });
 
   return key;
+}
+
+/// Checks in a record of ID [recordId]. Sets the check-in time of a record to
+/// the current time.
+Future<dynamic> checkin(String recordId) async {
+  String dbPath = await getDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database db = await dbFactory.openDatabase(dbPath);
+  StoreRef store = stringMapStoreFactory.store(dataRecordsName);
+
+  return store.record(recordId).update(db, {
+    'checkinTime': (DateTime.now().millisecondsSinceEpoch / 1000).round()
+  });
 }
 
 /// Saves the record [record] to local storage.
