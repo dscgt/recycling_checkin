@@ -11,16 +11,22 @@ class CheckIn extends StatefulWidget {
 }
 
 class CheckInState extends State<CheckIn> {
-  int something = 0;
+  Future<List<Record>> _recordsFuture;
+
+  initState() {
+    super.initState();
+    _recordsFuture = getRecords(true);
+  }
 
   handleCheckIn(String recordId) async {
     await checkin(recordId);
 
-    /// After checking in, get new record data by calling an empty setState--
-    /// this will trigger a rebuild and refresh FutureBuilder's future. Not
-    /// ideal; ideally, we sidestep this entirely with a StreamBuilder, but
-    /// Sembast doesn't support stream-based pulling.
-    setState(() {});
+    /// After a check-in, refresh record data by restarting FutureBuilder's
+    /// future. Not ideal; ideally, we sidestep this entirely with a
+    /// StreamBuilder, but Sembast doesn't support stream-based pulling.
+    setState(() {
+      _recordsFuture = getRecords(true);
+    });
   }
 
   Widget buildCard(Record record) {
@@ -66,7 +72,7 @@ class CheckInState extends State<CheckIn> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Record>>(
-      future: getRecords(true),
+      future: _recordsFuture,
       builder: (BuildContext context, AsyncSnapshot<List<Record>> snapshot) {
         if (snapshot.hasData) {
           if(snapshot.data.length == 0) {
