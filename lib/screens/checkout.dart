@@ -74,6 +74,13 @@ class CheckOutState extends State<CheckOut> {
     super.initState();
   }
 
+  void dispose() {
+    checkoutProperties[checkoutType].keys.forEach((String propertyTitle) {
+      checkoutProperties[checkoutType][propertyTitle].dispose();
+    });
+    super.dispose();
+  }
+
   void clearForm() {
     setState(() {
       checkoutProperties[checkoutType].keys.forEach((String propertyTitle) {

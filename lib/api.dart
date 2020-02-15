@@ -30,6 +30,7 @@ Future<List<Classes.DataCategory>> getCategories() async {
   return store.find(db, finder: finder).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
       return Classes.DataCategory(
+        id: snap.key,
         title: snap['title'],
         properties: snap['properties'].map((record) {
           return Classes.DataProperty(
@@ -139,6 +140,16 @@ Future<dynamic> checkout(Classes.Record record) async {
 
   var key = await store.add(db, toAdd);
   return key;
+}
+
+/// Deletes the category with id [id].
+Future<void> deleteCategory(String id) async {
+  String dbPath = await getDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database db = await dbFactory.openDatabase(dbPath);
+  StoreRef store = stringMapStoreFactory.store(dataCategoriesName);
+
+  return store.record(id).delete(db);
 }
 
 Future<void> deleteCategories() async {

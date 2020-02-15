@@ -3,11 +3,11 @@ enum DataType { string, number }
 
 class DataProperty {
   final String title;
-  final DataType type;
+  DataType type;
 
   DataProperty({
     this.title,
-    this.type
+    this.type,
   });
 
   @override
@@ -19,10 +19,12 @@ class DataProperty {
 class DataCategory {
   final String title;
   final List<DataProperty> properties;
+  String id;
 
   DataCategory({
     this.title,
-    this.properties
+    this.properties,
+    this.id
   });
 
   @override
