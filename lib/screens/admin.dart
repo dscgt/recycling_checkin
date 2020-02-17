@@ -1,24 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
+import 'package:provider/provider.dart';
 
 enum ConfirmAction { CANCEL, CONFIRM }
 
-class Admin extends StatefulWidget {
-
+/// Entrypoint for the Admin tree of widgets.
+class Admin extends StatelessWidget {
   @override
-  AdminState createState() {
-    return AdminState();
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (context) => AdminData(),
+      child: AdminWrapper()
+    );
   }
 }
 
-class AdminState extends State<Admin> {
-  Future<List<DataCategory>> _optionSetListFuture = getCategories();
-  bool showOptionSetForm = false;
+class AdminData extends ChangeNotifier {
+  Future<List<DataCategory>> _optionSetsFuture = getCategories();
 
-  initState() {
-    super.initState();
+  Future<List<DataCategory>> get optionSetsFuture => _optionSetsFuture;
+
+  void updateFuture(Future<List<DataCategory>> fut) {
+    _optionSetsFuture = fut;
+    notifyListeners();
   }
+}
+
+class AdminWrapper extends StatefulWidget {
+
+  @override
+  AdminWrapperState createState() {
+    return AdminWrapperState();
+  }
+}
+
+class AdminWrapperState extends State<AdminWrapper> {
+  bool showOptionSetForm = false;
 
   _handleShowOptionSetForm() {
     setState(() {
@@ -32,20 +50,54 @@ class AdminState extends State<Admin> {
     });
   }
 
-  _handleDeleteOptionSet(String id) async {
-    await deleteCategory(id);
-
-    /// Refresh option set future after deletion of an option set.
-    setState(() {
-      _optionSetListFuture = getCategories();
-    });
-  }
-
   handleOptionSetAdded() {
     setState(() {
       showOptionSetForm = false;
-      _optionSetListFuture = getCategories();
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        children: <Widget>[
+          Text(
+            'Here you can control what options crewmembers have when they check in and out.'
+          ),
+          Text(
+            'Crewmember options:'
+          ),
+          OptionSetList(),
+          showOptionSetForm
+            ? RaisedButton(
+              onPressed: () => _handleHideOptionSetForm(),
+              child: Text('Cancel'))
+            : RaisedButton(
+              onPressed: () => _handleShowOptionSetForm(),
+              child: Text('Add option set?')),
+          showOptionSetForm ? AddOptionSet(
+            addOptionSetCallback: handleOptionSetAdded
+          ) : null,
+        ].where((Object o) => o != null).toList(),
+      )
+    );
+  }
+}
+
+class OptionSetList extends StatefulWidget {
+  const OptionSetList({Key key}): super(key: key);
+
+  @override
+  OptionSetListState createState() {
+    return OptionSetListState();
+  }
+}
+
+class OptionSetListState extends State<OptionSetList> {
+
+  _handleDeleteOptionSet(String id) async {
+    await deleteCategory(id);
+    Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
   }
 
   Widget _buildOptionSetList(List<DataCategory> categories) {
@@ -104,53 +156,34 @@ class AdminState extends State<Admin> {
     );
   }
 
-  @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: <Widget>[
-          Text(
-            'Here you can control what options crewmembers have when they check in and out.'
-          ),
-          Text(
-            'Crewmember options:'
-          ),
-          FutureBuilder(
-            future: _optionSetListFuture,
-            builder: (BuildContext context, AsyncSnapshot<List<DataCategory>> snapshot) {
-              if (snapshot.hasData) {
-                return _buildOptionSetList(snapshot.data);
-              } else if (snapshot.hasError) {
-                return Text('Error happened...yikes. Try again?');
-              } else {
-                return Text('Loading...');
-              }
+    return Consumer<AdminData>(
+      builder: (context, adminData, child) {
+        return FutureBuilder(
+          future: adminData.optionSetsFuture,
+          builder: (BuildContext context, AsyncSnapshot<List<DataCategory>> snapshot) {
+            if (snapshot.hasData) {
+              return _buildOptionSetList(snapshot.data);
+            } else if (snapshot.hasError) {
+              return Text('Error happened...yikes. Try again?');
+            } else {
+              return Text('Loading...');
             }
-          ),
-          showOptionSetForm
-            ? RaisedButton(
-              onPressed: () => _handleHideOptionSetForm(),
-              child: Text('Cancel'))
-            : RaisedButton(
-              onPressed: () => _handleShowOptionSetForm(),
-              child: Text('Add option set?')),
-          showOptionSetForm ? OptionSet(
-            addOptionSetCallback: handleOptionSetAdded
-          ) : null,
-        ].where((Object o) => o != null).toList(),
-      )
+          }
+        );
+      }
     );
   }
 }
 
-class OptionSet extends StatefulWidget {
+class AddOptionSet extends StatefulWidget {
   final Function addOptionSetCallback;
 
-  const OptionSet({Key key, this.addOptionSetCallback}): super(key: key);
+  const AddOptionSet({Key key, this.addOptionSetCallback}): super(key: key);
 
   @override
-  OptionSetState createState() {
-    return OptionSetState();
+  AddOptionSetState createState() {
+    return AddOptionSetState();
   }
 }
 
@@ -164,7 +197,7 @@ class PropertyEntry {
   });
 }
 
-class OptionSetState extends State<OptionSet> {
+class AddOptionSetState extends State<AddOptionSet> {
   List<PropertyEntry> optionSetPropertyControllers = [];
   final _optionSetFormKey = GlobalKey<FormState>();
   final _optionSetNameController = TextEditingController();
@@ -205,6 +238,7 @@ class OptionSetState extends State<OptionSet> {
     );
     await addDataCategory(toAdd);
 
+    Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
     widget.addOptionSetCallback();
   }
 
