@@ -1,5 +1,18 @@
 
+import 'package:flutter/material.dart';
+
 enum DataType { string, number }
+
+/// DataProperty transformed for forms.
+class PropertyEntry {
+  final TextEditingController controller;
+  DataType type;
+
+  PropertyEntry({
+    @required this.controller,
+    @required this.type,
+  });
+}
 
 class DataProperty {
   final String title;

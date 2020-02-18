@@ -227,17 +227,6 @@ class OptionSetCardState extends State<OptionSetCard> {
   }
 }
 
-
-
-class PropertyEntry {
-  final TextEditingController controller;
-  DataType type;
-
-  PropertyEntry({
-    @required this.controller,
-    @required this.type,
-  });
-}
 class AddOptionSet extends StatefulWidget {
   final Function addOptionSetCallback;
 
@@ -323,7 +312,7 @@ class AddOptionSetState extends State<AddOptionSet> {
               },
               decoration: const InputDecoration(
                 hintText: 'A required detail (ex. name)',
-                labelText: 'Option set detail',
+                labelText: 'Required info for checkout',
               ),
             ),
           ),

@@ -2,16 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
 
-class PropertyEntry {
-  final TextEditingController controller;
-  DataType type;
-
-  PropertyEntry({
-    @required this.controller,
-    @required this.type,
-  });
-}
-
 class EditOptionSet extends StatefulWidget {
   final DataCategory dataCategory;
 
@@ -102,7 +92,7 @@ class EditOptionSetState extends State<EditOptionSet> {
               },
               decoration: const InputDecoration(
                 hintText: 'A required detail (ex. name)',
-                labelText: 'Option set detail',
+                labelText: 'Required info for checkout',
               ),
             ),
           ),
