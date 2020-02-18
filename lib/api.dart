@@ -106,6 +106,29 @@ Future<String> addDataCategory(Classes.DataCategory category) async {
   return key;
 }
 
+/// Updates the data category of id [id] by ovewriting it with details from
+/// [category].
+Future<dynamic> updateDataCategory(String id, Classes.DataCategory category) async {
+  String dbPath = await getDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database db = await dbFactory.openDatabase(dbPath);
+  StoreRef store = stringMapStoreFactory.store(dataCategoriesName);
+
+  List<Map<String, String>> properties = category
+    .properties
+    .map((Classes.DataProperty prop) {
+    return {
+      'title': prop.title,
+      'type': '${prop.type}'
+    };
+  }).toList();
+
+  return store.record(id).put(db, {
+    'title': category.title,
+    'properties': properties
+  }, merge: true);
+}
+
 /// Checks in a record of ID [recordId]. Sets the check-in time of a record to
 /// the current time.
 Future<dynamic> checkin(String recordId) async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
 import 'package:provider/provider.dart';
+import 'package:recycling_checkin/screens/edit_option_set.dart';
 
 enum ConfirmAction { CANCEL, CONFIRM }
 
@@ -16,6 +17,9 @@ class Admin extends StatelessWidget {
   }
 }
 
+/// Stores data required by all of the admin tree. This consists of a future
+/// for getting option sets, and an update function to update that future
+/// for refresh.
 class AdminData extends ChangeNotifier {
   Future<List<DataCategory>> _optionSetsFuture = getCategories();
 
@@ -27,6 +31,8 @@ class AdminData extends ChangeNotifier {
   }
 }
 
+/// Parent widget to OptionSetList and AddOptionSet. Handles visibility of
+/// option set adding form,
 class AdminWrapper extends StatefulWidget {
 
   @override
@@ -34,7 +40,6 @@ class AdminWrapper extends StatefulWidget {
     return AdminWrapperState();
   }
 }
-
 class AdminWrapperState extends State<AdminWrapper> {
   bool showOptionSetForm = false;
 
@@ -92,62 +97,11 @@ class OptionSetList extends StatefulWidget {
     return OptionSetListState();
   }
 }
-
 class OptionSetListState extends State<OptionSetList> {
-
-  _handleDeleteOptionSet(String id) async {
-    await deleteCategory(id);
-    Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
-  }
-
   Widget _buildOptionSetList(List<DataCategory> categories) {
     List<Widget> categoryElements = categories.map((DataCategory dc) {
-      List<Widget> propertyViews = [
-        Text('${dc.title} checkouts.\nA crewmember must enter:'),
-      ];
-      propertyViews.addAll(dc.properties.map((DataProperty dp) {
-        if (dp.type == DataType.number) {
-           return Text('${dp.title} (only numbers allowed)');
-        }
-        return Text('${dp.title}');
-      }).toList());
-      propertyViews.addAll([
-        IconButton(
-          icon: Icon(Icons.delete),
-          onPressed: () {
-            showDialog<ConfirmAction>(
-              context: context,
-              barrierDismissible: true,
-              builder: (BuildContext context) {
-                return AlertDialog(
-                  title: const Text('Are you sure you want to delete this?'),
-                  actions: <Widget>[
-                    FlatButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(ConfirmAction.CANCEL);
-                      },
-                      child: const Text('CANCEL'),
-                    ),
-                    FlatButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(ConfirmAction.CONFIRM);
-                        _handleDeleteOptionSet(dc.id);
-                      },
-                      child: const Text('CONFIRM'),
-                    ),
-                  ],
-                );
-              }
-            );
-          },
-        ),
-
-      ]);
-
-      return Card(
-        child: Column(
-          children: propertyViews
-        ),
+      return OptionSetCard(
+        dataCategory: dc
       );
     }).toList();
 
@@ -176,16 +130,104 @@ class OptionSetListState extends State<OptionSetList> {
   }
 }
 
-class AddOptionSet extends StatefulWidget {
-  final Function addOptionSetCallback;
+class OptionSetCard extends StatefulWidget {
+  final DataCategory dataCategory;
 
-  const AddOptionSet({Key key, this.addOptionSetCallback}): super(key: key);
+  OptionSetCard({Key key, this.dataCategory}): super(key: key);
 
   @override
-  AddOptionSetState createState() {
-    return AddOptionSetState();
+  OptionSetCardState createState() {
+    return OptionSetCardState();
   }
 }
+class OptionSetCardState extends State<OptionSetCard> {
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  /// Deletes this option set.
+  _deleteOptionSet() async {
+    await deleteCategory(widget.dataCategory.id);
+    Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
+  }
+
+  /// Handles user tap on option set deletion.
+  void _handleDeleteOptionSet(BuildContext context) {
+    showDialog<ConfirmAction>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Are you sure you want to delete this?'),
+          actions: <Widget>[
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CANCEL);
+              },
+              child: const Text('CANCEL'),
+            ),
+            FlatButton(
+              onPressed: () {
+                Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                _deleteOptionSet();
+              },
+              child: const Text('CONFIRM'),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  /// Handles user tap on option set edit. Directs user to page for editing
+  /// option sets.
+  void _handleEdit(BuildContext context) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EditOptionSet(
+          dataCategory: widget.dataCategory
+      )),
+    );
+    Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
+  }
+
+  Widget _buildOptionSet(BuildContext context) {
+    DataCategory dc = widget.dataCategory;
+    return Card(
+      child: Column(
+          children: [
+            Text('${dc.title} checkouts.\nA crewmember must enter:'),
+            ...dc.properties.map((DataProperty dp) {
+              if (dp.type == DataType.number) {
+                return Text('${dp.title} (only numbers allowed)');
+              }
+              return Text('${dp.title}');
+            }).toList(),
+            Row(
+              children: <Widget>[
+                IconButton(
+                  icon: Icon(Icons.edit),
+                  onPressed: () => _handleEdit(context),
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => _handleDeleteOptionSet(context),
+                ),
+              ],
+            ),
+          ]
+      ),
+    );
+  }
+
+  Widget build(BuildContext context) {
+    return _buildOptionSet(context);
+  }
+}
+
+
 
 class PropertyEntry {
   final TextEditingController controller;
@@ -196,7 +238,16 @@ class PropertyEntry {
     @required this.type,
   });
 }
+class AddOptionSet extends StatefulWidget {
+  final Function addOptionSetCallback;
 
+  const AddOptionSet({Key key, this.addOptionSetCallback}): super(key: key);
+
+  @override
+  AddOptionSetState createState() {
+    return AddOptionSetState();
+  }
+}
 class AddOptionSetState extends State<AddOptionSet> {
   List<PropertyEntry> optionSetPropertyControllers = [];
   final _optionSetFormKey = GlobalKey<FormState>();
@@ -253,28 +304,13 @@ class AddOptionSetState extends State<AddOptionSet> {
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> formElements = [
-      /// First, create the field where user can define an option set's name.
-      TextFormField(
-        controller: _optionSetNameController,
-        validator: (value) {
-          if (value.isEmpty) {
-            return 'This field must be filled out.';
-          }
-          return null;
-        },
-        decoration: const InputDecoration(
-          hintText: 'A broad check-out category (ex. Vehicle, Fuel Card...)',
-          labelText: 'Option set name',
-        ),
-      ),
-    ];
-    /// Then, create fields for all properties of the option set. User will be
+    /// Create fields for all properties of the option set. User will be
     /// able to modify a property's name and type (between DataType.string and
     /// DataType.integer) and delete properties.
+    List<Widget> propertyFields = [];
     for (int i = 0; i < optionSetPropertyControllers.length; i++) {
       PropertyEntry thisProp = optionSetPropertyControllers[i];
-      formElements.add(Row(
+      propertyFields.add(Row(
         children: <Widget>[
           Expanded(
             child: TextFormField(
@@ -313,30 +349,45 @@ class AddOptionSetState extends State<AddOptionSet> {
         ],
       ));
     }
-    /// Finally, create options for adding more properties to this new option
-    /// set, and submission.
-    formElements.addAll([
-      RaisedButton(
-          onPressed: () => _handleAddOptionSetProperty(),
-          child: Text('Add property?')
-      ),
-      Text(
-        'Note: you won\'t need to add properties for check-in and check-out time. These are handled automatically.',
-      ),
-      Row(
-        children: <Widget>[
-          RaisedButton(
-            onPressed: () => _handleAddOptionSet(),
-            child: Text('Submit'),
-          ),
-        ],
-      )
-    ]);
 
     return Form(
       key: _optionSetFormKey,
       child: Column(
-          children: formElements
+        children: [
+          /// First, create the field where user can define an option set's
+          /// name.
+          TextFormField(
+            controller: _optionSetNameController,
+            validator: (value) {
+              if (value.isEmpty) {
+                return 'This field must be filled out.';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              hintText: 'A broad check-out category (ex. Vehicle, Fuel Card...)',
+              labelText: 'Option set name',
+            ),
+          ),
+          ...propertyFields,
+          /// Finally, create options for adding more properties to this new
+          /// option set, and submission.
+          RaisedButton(
+            onPressed: () => _handleAddOptionSetProperty(),
+            child: Text('Add property?')
+          ),
+          Text(
+            'Note: you won\'t need to add properties for check-in and check-out time. These are handled automatically.',
+          ),
+          Row(
+            children: <Widget>[
+              RaisedButton(
+                onPressed: () => _handleAddOptionSet(),
+                child: Text('Submit'),
+              ),
+            ],
+          )
+        ]
       )
     );
   }
