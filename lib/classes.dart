@@ -1,6 +1,9 @@
 
 import 'package:flutter/material.dart';
 
+/// Admin authentication states for Widgets that affect admin authentication.
+enum AdminAuthenticationState { NO, YES }
+
 enum DataType { string, number }
 
 /// DataProperty transformed for forms.

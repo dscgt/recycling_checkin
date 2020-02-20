@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
@@ -8,11 +10,20 @@ enum ConfirmAction { CANCEL, CONFIRM }
 
 /// Entrypoint for the Admin tree of widgets.
 class Admin extends StatelessWidget {
+  final StreamController<AdminAuthenticationState> adminAuthController;
+
+  const Admin({
+    Key key,
+    this.adminAuthController
+  }) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => AdminData(),
-      child: AdminWrapper()
+      child: AdminWrapper(
+        adminAuthController: adminAuthController
+      )
     );
   }
 }
@@ -34,6 +45,12 @@ class AdminData extends ChangeNotifier {
 /// Parent widget to OptionSetList and AddOptionSet. Handles visibility of
 /// option set adding form,
 class AdminWrapper extends StatefulWidget {
+  final StreamController<AdminAuthenticationState> adminAuthController;
+
+  const AdminWrapper({
+    Key key,
+    this.adminAuthController
+  }): super(key: key);
 
   @override
   AdminWrapperState createState() {
@@ -42,6 +59,7 @@ class AdminWrapper extends StatefulWidget {
 }
 class AdminWrapperState extends State<AdminWrapper> {
   bool showOptionSetForm = false;
+  bool showPasswordChangeForm = false;
 
   _handleShowOptionSetForm() {
     setState(() {
@@ -55,10 +73,20 @@ class AdminWrapperState extends State<AdminWrapper> {
     });
   }
 
-  handleOptionSetAdded() {
+  _handleOptionSetAdded() {
     setState(() {
       showOptionSetForm = false;
     });
+  }
+
+  _handlePasswordChange() {
+    setState(() {
+      showPasswordChangeForm = false;
+    });
+  }
+
+  _handleLogOut() {
+    widget.adminAuthController.add(AdminAuthenticationState.NO);
   }
 
   @override
@@ -69,6 +97,28 @@ class AdminWrapperState extends State<AdminWrapper> {
           Text(
             'Here you can control what options crewmembers have when they check in and out.'
           ),
+          RaisedButton(
+            child: Text('Log out of admin page'),
+            onPressed: () => _handleLogOut(),
+          ),
+          showPasswordChangeForm
+            ? RaisedButton(
+              onPressed: () {
+                setState(() {
+                  showPasswordChangeForm = false;
+                });
+              },
+              child: Text('Cancel change password'))
+            : RaisedButton(
+              onPressed: () {
+                setState(() {
+                  showPasswordChangeForm = true;
+                });
+              },
+              child: Text('Change password?')),
+          showPasswordChangeForm ? ChangeAdminPassword(
+            passwordChangeCallback: _handlePasswordChange,
+          ) : null,
           Text(
             'Crewmember options:'
           ),
@@ -76,12 +126,12 @@ class AdminWrapperState extends State<AdminWrapper> {
           showOptionSetForm
             ? RaisedButton(
               onPressed: () => _handleHideOptionSetForm(),
-              child: Text('Cancel'))
+              child: Text('Cancel add option set'))
             : RaisedButton(
               onPressed: () => _handleShowOptionSetForm(),
               child: Text('Add option set?')),
           showOptionSetForm ? AddOptionSet(
-            addOptionSetCallback: handleOptionSetAdded
+            addOptionSetCallback: _handleOptionSetAdded
           ) : null,
         ].where((Object o) => o != null).toList(),
       )
@@ -224,6 +274,132 @@ class OptionSetCardState extends State<OptionSetCard> {
 
   Widget build(BuildContext context) {
     return _buildOptionSet(context);
+  }
+}
+
+class ChangeAdminPassword extends StatefulWidget {
+  final Function passwordChangeCallback;
+
+  const ChangeAdminPassword({Key key, this.passwordChangeCallback}): super(key: key);
+
+  @override
+  ChangeAdminPasswordState createState() {
+    return ChangeAdminPasswordState();
+  }
+}
+class ChangeAdminPasswordState extends State<ChangeAdminPassword> {
+
+  final _formKey = GlobalKey<FormState>();
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _newPasswordValidateController = TextEditingController();
+  String infoText = '';
+  bool loadingAfterButtonPress = false;
+
+  initState() {
+    super.initState();
+  }
+
+  dispose() {
+    super.dispose();
+  }
+
+  void _handleChangePassword() async {
+    /// Validation check.
+    if (!_formKey.currentState.validate()) {
+      return;
+    }
+
+    setState(() {
+      loadingAfterButtonPress = true;
+      infoText = 'loading...';
+    });
+    /// Delay a half-second before checking password to give the widget time to
+    /// rebuild. Not ideal; ideally, checkPassword should be non-blocking.
+    Timer(Duration(milliseconds: 500), () {
+      checkPassword(_oldPasswordController.text).then((bool isCorrect) {
+        if (!isCorrect) {
+          setState(() {
+            infoText = 'Incorrect password.';
+            loadingAfterButtonPress = false;
+          });
+          return;
+        }
+        setState(() {
+          infoText = '';
+          loadingAfterButtonPress = false;
+        });
+        updateAdminPassword(_newPasswordController.text).then((s) {
+          widget.passwordChangeCallback();
+        });
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Card(
+        child: Column(
+          children: <Widget>[
+            Text('Change password'),
+            TextFormField(
+              obscureText: true,
+              controller: _oldPasswordController,
+              validator: (value) {
+                if (value.isEmpty) {
+                  return 'This field must be filled out.';
+                }
+                return null;
+              },
+              decoration: const InputDecoration(
+                labelText: 'Old password',
+              ),
+            ),
+            TextFormField(
+              obscureText: true,
+              controller: _newPasswordController,
+              validator: (value) {
+                if (value.isEmpty) {
+                  return 'This field must be filled out.';
+                }
+                if (value.length < 5) {
+                  return 'Password must be at least 5 characters long.';
+                }
+                return null;
+              },
+              decoration: const InputDecoration(
+                labelText: 'New password',
+              ),
+            ),
+            TextFormField(
+              obscureText: true,
+              controller: _newPasswordValidateController,
+              validator: (value) {
+                if (value.isEmpty) {
+                  return 'This field must be filled out.';
+                }
+                if (value != _newPasswordController.text) {
+                  return 'Confirm password must match password.';
+                }
+                return null;
+              },
+              decoration: const InputDecoration(
+                labelText: 'Admin password',
+              ),
+            ),
+            RaisedButton(
+              child: Text('Submit'),
+              onPressed: loadingAfterButtonPress
+                ? null
+                : () => _handleChangePassword()
+            ),
+            Text(infoText),
+          ],
+        )
+      )
+    );
   }
 }
 

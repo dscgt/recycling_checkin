@@ -7,7 +7,7 @@
 // https://flutter.dev/docs/cookbook/persistence/sqlite
 
 import 'package:flutter/material.dart';
-import 'package:recycling_checkin/screens/admin.dart';
+import 'package:recycling_checkin/screens/admin_builder.dart';
 import 'package:recycling_checkin/screens/checkin.dart';
 import 'package:recycling_checkin/screens/checkout.dart';
 import 'package:recycling_checkin/screens/records.dart';
@@ -41,8 +41,8 @@ class Main extends StatefulWidget {
 
 class _MainState extends State<Main> {
 
-  /// The ID of the screen to display. 0 is checkout, 1 is checkin, 2 is records
-  /// , 3 initiates admin login.
+  /// The ID of the screen to display. 0 is checkout, 1 is checkin, 2 is
+  /// records, 3 initiates admin login.
   int _view = 0;
 
   _handleTapNavigation(int index) {
@@ -53,53 +53,52 @@ class _MainState extends State<Main> {
 
   @override
   Widget build(BuildContext context) {
+    Widget toDisplay;
+    String appBarText;
+    if (_view == 3) {
+      toDisplay = AdminBuilder();
+      appBarText = 'Admin';
+    } else if (_view == 2) {
+      toDisplay = Records();
+      appBarText = 'Records';
+    } else if (_view == 1) {
+      toDisplay = CheckIn();
+      appBarText = 'Check In';
+    } else { // view is 0, or defaults to it
+      toDisplay = CheckOut();
+      appBarText = 'Check Out';
+    }
 
-      Widget toDisplay;
-      String appBarText;
-      if (_view == 3) {
-        toDisplay = Admin();
-        appBarText = 'Admin Settings';
-      } else if (_view == 2) {
-        toDisplay = Records();
-        appBarText = 'Records';
-      } else if (_view == 1) {
-        toDisplay = CheckIn();
-        appBarText = 'Check In';
-      } else { // view is 0, or defaults to it
-        toDisplay = CheckOut();
-        appBarText = 'Check Out';
-      }
-
-      return Scaffold(
+    return Scaffold(
       appBar: AppBar(
         title: Text(appBarText),
       ),
-        body: toDisplay,
-        bottomNavigationBar: BottomNavigationBar(
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              icon: Icon(Icons.directions_car),
-              title: Text('Check Out'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.check),
-              title: Text('Check In'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.view_list),
-              title: Text('Records'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              title: Text('Admin'),
-            ),
-          ],
-          currentIndex: _view,
-          onTap: _handleTapNavigation,
-          selectedItemColor: Theme.of(context).primaryColor,
-          unselectedItemColor: Color.fromARGB(255, 200, 200, 200),
-          showUnselectedLabels: true,
-        ),
+      body: toDisplay,
+      bottomNavigationBar: BottomNavigationBar(
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.directions_car),
+            title: Text('Check Out'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.check),
+            title: Text('Check In'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.view_list),
+            title: Text('Records'),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            title: Text('Admin'),
+          ),
+        ],
+        currentIndex: _view,
+        onTap: _handleTapNavigation,
+        selectedItemColor: Theme.of(context).primaryColor,
+        unselectedItemColor: Color.fromARGB(255, 200, 200, 200),
+        showUnselectedLabels: true,
+      ),
     );
   }
 }

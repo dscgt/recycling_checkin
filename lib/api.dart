@@ -1,16 +1,34 @@
 
+import 'dart:async';
 import 'dart:io';
 
+import 'package:password/password.dart';
 import 'package:recycling_checkin/classes.dart' as Classes;
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:recycling_checkin/utils.dart';
 import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final String dbName = 'recycling_checkout.db';
 final String dataCategoriesName = 'dataCategories';
 final String dataRecordsName = 'dataRecords';
+
+/// Attempts [password] with the stored admin password, returning a Future with
+/// the boolean result of whether [password] is correct or not.
+Future<bool> checkPassword(String password) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String storedPassword = prefs.getString('pwd') ?? 'String';
+  return Password.verify(password, storedPassword);
+}
+
+/// Updates the stored admin password with a hash of [newPassword].
+Future<void> updateAdminPassword(String newPassword) async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String thisPassword = Password.hash(newPassword, new PBKDF2());
+  return prefs.setString('pwd', thisPassword);
+}
 
 /// Gets the path on local filesystem that will be used to reference local
 /// storage for Sembast.
