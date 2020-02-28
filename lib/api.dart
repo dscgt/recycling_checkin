@@ -14,12 +14,24 @@ import 'package:shared_preferences/shared_preferences.dart';
 final String dbName = 'recycling_checkout.db';
 final String dataCategoriesName = 'dataCategories';
 final String dataRecordsName = 'dataRecords';
+final String adminPasswordFieldName = 'pwd';
+
+/// Checks if there is a stored admin password. Returns a Future with a
+/// boolean result reflecting if there is a stored password or not, with true
+/// meaning that there is a stored password.
+Future<bool> checkIfPasswordExists() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  return prefs.getString('pwd') != null;
+}
 
 /// Attempts [password] with the stored admin password, returning a Future with
 /// the boolean result of whether [password] is correct or not.
 Future<bool> checkPassword(String password) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
-  String storedPassword = prefs.getString('pwd') ?? 'String';
+  String storedPassword = prefs.getString(adminPasswordFieldName);
+  if (storedPassword == null) {
+    return false;
+  }
   return Password.verify(password, storedPassword);
 }
 
@@ -27,7 +39,7 @@ Future<bool> checkPassword(String password) async {
 Future<void> updateAdminPassword(String newPassword) async {
   SharedPreferences prefs = await SharedPreferences.getInstance();
   String thisPassword = Password.hash(newPassword, new PBKDF2());
-  return prefs.setString('pwd', thisPassword);
+  return prefs.setString(adminPasswordFieldName, thisPassword);
 }
 
 /// Gets the path on local filesystem that will be used to reference local

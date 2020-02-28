@@ -1,4 +1,5 @@
 
+import 'package:intl/intl.dart';
 import 'package:recycling_checkin/classes.dart';
 
 DataType stringToDataType(String s) {
@@ -13,5 +14,7 @@ DataType stringToDataType(String s) {
 }
 
 String dateTimeToString(DateTime dt) {
-  return dt.toString();
+  DateTime local = dt.toLocal();
+  String toReturn = DateFormat.yMMMMd().add_jm().format(local);
+  return toReturn;
 }

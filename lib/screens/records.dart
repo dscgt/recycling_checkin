@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
+import 'package:recycling_checkin/screens/loading.dart';
 import 'package:recycling_checkin/utils.dart';
 
 class Records extends StatefulWidget {
@@ -27,7 +28,7 @@ class RecordsState extends State<Records> {
   }
 
   /// Builds a dropdown with categories extracted from [records].
-  Widget buildCategoryDropdown(List<Record> records) {
+  Widget _buildCategoryDropdown(List<Record> records) {
     List<String> categories = [ALL_CATEGORIES_FILTER_NAME];
     records.forEach((Record r) {
       if (categories.indexOf(r.category) == -1) {
@@ -49,7 +50,11 @@ class RecordsState extends State<Records> {
     );
   }
 
-  Widget buildRecords(List<Record> records) {
+  Widget _buildRecords(BuildContext context, List<Record> records) {
+    TextStyle cardTextStyle = TextStyle(
+      fontSize: 18.0
+    );
+
     // remove records that don't match user-specified category
     // does not remove any records if user has chosen to view all categories
     List<Record> recordsToDisplay = new List<Record>.from(records);
@@ -108,27 +113,43 @@ class RecordsState extends State<Records> {
         thisRecord.properties.forEach((String key, dynamic value) {
           if (value is String) {
             propsToDisplay.add(
-              Text('$key: $value')
+              Text(
+                '$key: $value',
+                style: cardTextStyle
+              )
             );
           }
         });
         return Card(
-          child: Row(
-            children: <Widget>[
-              Column(
-                children: <Widget>[
-                  Text('${thisRecord.category} checkout'),
-                  Column(
-                    children: propsToDisplay,
-                  ),
-                  Text('Checked out at: ${dateTimeToString(thisRecord.checkoutTime)}'),
-                  Text('Checked in at: ${thisRecord.checkinTime is DateTime
-                    ? dateTimeToString(thisRecord.checkinTime)
-                    : 'Not checked in yet'
-                  }')
-                ],
-              ),
-            ],
+          child: Container(
+            padding: const EdgeInsets.only(
+              top: 10.0,
+              bottom: 10.0,
+              right: 20.0,
+              left: 20.0
+            ),
+            child: Column(
+              children: <Widget>[
+                Text('${thisRecord.category} checkout',
+                  style: cardTextStyle.copyWith(
+                    fontWeight: FontWeight.bold
+                  )
+                ),
+                Column(
+                  children: propsToDisplay,
+                ),
+                Text(
+                  'Checked out at: ${dateTimeToString(thisRecord.checkoutTime)}',
+                  style: cardTextStyle
+                ),
+                Text('Checked in at: ${thisRecord.checkinTime is DateTime
+                  ? dateTimeToString(thisRecord.checkinTime)
+                  : 'Not checked in yet'
+                }',
+                  style: cardTextStyle
+                )
+              ],
+            ),
           )
         );
       }
@@ -140,49 +161,61 @@ class RecordsState extends State<Records> {
     return FutureBuilder(
       future: _recordsFuture,
       builder: (BuildContext context, AsyncSnapshot<List<Record>> snapshot) {
-        if (snapshot.hasError) {
-          return Text('Something wrong happened...try again?');
-        }
         if (!snapshot.hasData) {
-          return Text('Loading...');
+          return Loading();
         }
-        return Column(
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                DropdownButton<String>(
-                  value: sortFilter,
-                  icon: Icon(Icons.arrow_drop_down),
-                  onChanged: (String newValue) {
-                    setState(() {
-                      sortFilter = newValue;
-                    });
-                  },
-                  items: [
-                    SORT_BY_NEWEST_NAME,
-                    SORT_BY_OLDEST_NAME,
-                  ].map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    )
-                  ).toList(),
-                ),
-                buildCategoryDropdown(snapshot.data),
-                Checkbox(
-                  onChanged: (bool newValue) {
-                    setState(() {
-                      includeCheckedOut = newValue;
-                    });
-                  },
-                  value: includeCheckedOut
-                ),
-                Text('Include checked out'),
-              ],
-            ),
-            Expanded(
-              child: buildRecords(snapshot.data)
-            )
-          ],
+        return Container(
+          padding: const EdgeInsets.only(top: 10.0, bottom: 10.0, left: 20.0, right: 20.0),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  DropdownButton<String>(
+                    value: sortFilter,
+                    icon: Icon(Icons.arrow_drop_down),
+                    onChanged: (String newValue) {
+                      setState(() {
+                        sortFilter = newValue;
+                      });
+                    },
+                    items: [
+                      SORT_BY_NEWEST_NAME,
+                      SORT_BY_OLDEST_NAME,
+                    ].map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value),
+                      )
+                    ).toList(),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.only(left: 15.0, right: 15.0),
+                    child: _buildCategoryDropdown(snapshot.data),
+                  ),
+                  Row(
+                    children: <Widget>[
+                      Checkbox(
+                        onChanged: (bool newValue) {
+                          setState(() {
+                            includeCheckedOut = newValue;
+                          });
+                        },
+                        value: includeCheckedOut
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          includeCheckedOut = !includeCheckedOut;
+                        }),
+                        child: Text('Include currently checked-out'),
+                      )
+                    ],
+                  )
+                ],
+              ),
+              Expanded(
+                child: _buildRecords(context, snapshot.data)
+              )
+            ],
+          )
         );
       }
     );

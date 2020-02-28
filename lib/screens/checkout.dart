@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
+import 'package:recycling_checkin/screens/loading.dart';
 
 class CheckOut extends StatefulWidget {
   @override
@@ -35,6 +36,7 @@ class CheckOutState extends State<CheckOut> {
 
   @override
   void initState() {
+    super.initState();
     getCategories().then((List<DataCategory> categories) {
 
       // build state objects from retrieved categories
@@ -70,14 +72,16 @@ class CheckOutState extends State<CheckOut> {
         loading = false;
       });
     });
-
-    super.initState();
   }
 
   void dispose() {
-    checkoutProperties[checkoutType].keys.forEach((String propertyTitle) {
-      checkoutProperties[checkoutType][propertyTitle].dispose();
+    // Dispose of all TextEditingController's.
+    checkoutProperties.forEach((String key, Map<String, TextEditingController> tec) {
+      tec.forEach((String key2, TextEditingController tec2) {
+        tec2.dispose();
+      });
     });
+
     super.dispose();
   }
 
@@ -114,7 +118,20 @@ class CheckOutState extends State<CheckOut> {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return Text('Loading...');
+      return Loading();
+    }
+
+    if (availableTypes.length == 0) {
+      return Container(
+        alignment: Alignment.center,
+        padding: EdgeInsets.only(left: 75.0, right: 75.0),
+        child: Text('There aren\'t any things to checkout. If you believe this is in error, please contact your administrator.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 24.0
+          ),
+        )
+      );
     }
 
     List<Widget> formElements = [];
@@ -124,22 +141,18 @@ class CheckOutState extends State<CheckOut> {
         thisKeyboardType = TextInputType.number;
       }
       formElements.add(
-        Row(
-          children: <Widget>[
-            Text('$propertyTitle: '),
-            Expanded(
-              child: TextFormField(
-                controller: checkoutProperties[checkoutType][propertyTitle],
-                validator: (value) {
-                  if (value.isEmpty) {
-                    return 'Please enter a $propertyTitle.';
-                  }
-                  return null;
-                },
-                keyboardType: thisKeyboardType
-              )
-            ),
-          ],
+        TextFormField(
+          controller: checkoutProperties[checkoutType][propertyTitle],
+          validator: (value) {
+            if (value.isEmpty) {
+              return 'Please enter a $propertyTitle.';
+            }
+            return null;
+          },
+          keyboardType: thisKeyboardType,
+          decoration: InputDecoration(
+            labelText: '$propertyTitle'
+          ),
         )
       );
     });
@@ -151,29 +164,32 @@ class CheckOutState extends State<CheckOut> {
       Text('(Date and time will be recorded automatically.)')
     ]);
 
-    return Column(
-      children: [
-        DropdownButton<String>(
-          value: checkoutType,
-          icon: Icon(Icons.arrow_drop_down),
-          onChanged: (String newValue) {
-            setState(() {
-              checkoutType = newValue;
-            });
-          },
-          items: availableTypes.map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
+    return Container(
+      padding: EdgeInsets.only(left: 75.0, right: 75.0),
+      child: Column(
+        children: [
+          DropdownButton<String>(
+            value: checkoutType,
+            icon: Icon(Icons.arrow_drop_down),
+            onChanged: (String newValue) {
+              setState(() {
+                checkoutType = newValue;
+              });
+            },
+            items: availableTypes.map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              )
+            ).toList(),
+          ),
+          Form(
+            key: _formKey,
+            child: Column(
+              children: formElements
             )
-          ).toList(),
-        ),
-        Form(
-          key: _formKey,
-          child: Column(
-            children: formElements
-          )
-        ),
-      ]
+          ),
+        ]
+      )
     );
   }
 }

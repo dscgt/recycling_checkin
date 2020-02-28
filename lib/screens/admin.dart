@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import 'package:recycling_checkin/screens/edit_option_set.dart';
 
 enum ConfirmAction { CANCEL, CONFIRM }
+TextStyle adminTextStyle = TextStyle(
+  fontSize: 18.0
+);
 
 /// Entrypoint for the Admin tree of widgets.
 class Admin extends StatelessWidget {
@@ -89,56 +92,104 @@ class AdminWrapperState extends State<AdminWrapper> {
     widget.adminAuthController.add(AdminAuthenticationState.NO);
   }
 
+  Widget _buildChangePasswordForm() {
+    if (showPasswordChangeForm) {
+      return Column(
+        children: <Widget>[
+          RaisedButton(
+            onPressed: () {
+              setState(() {
+                showPasswordChangeForm = false;
+              });
+            },
+            child: Text(
+              'Cancel change password',
+              style: adminTextStyle
+            )
+          ),
+          ChangeAdminPassword(
+            passwordChangeCallback: _handlePasswordChange,
+          )
+        ],
+      );
+    } else {
+      return Column(
+        children: <Widget>[
+          RaisedButton(
+            onPressed: () {
+              setState(() {
+                showPasswordChangeForm = true;
+              });
+            },
+            child: Text(
+              'Change password?',
+              style: adminTextStyle
+            )
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildAddOptionSetForm() {
+    if (showOptionSetForm) {
+      return Column(
+        children: <Widget>[
+          RaisedButton(
+            onPressed: () => _handleHideOptionSetForm(),
+            child: Text('Cancel add option set',
+              style: adminTextStyle,
+            )
+          ),
+          AddOptionSet(
+            addOptionSetCallback: _handleOptionSetAdded
+          )
+        ],
+      );
+    } else {
+      return Column(
+        children: <Widget>[
+          RaisedButton(
+            onPressed: () => _handleShowOptionSetForm(),
+            child: Text(
+              'Add option set?',
+              style: adminTextStyle
+            )
+          ),
+        ],
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: <Widget>[
-          Text(
-            'Here you can control what options crewmembers have when they check in and out.'
-          ),
-          RaisedButton(
-            child: Text('Log out of admin page'),
-            onPressed: () => _handleLogOut(),
-          ),
-          showPasswordChangeForm
-            ? RaisedButton(
-              onPressed: () {
-                setState(() {
-                  showPasswordChangeForm = false;
-                });
-              },
-              child: Text('Cancel change password'))
-            : RaisedButton(
-              onPressed: () {
-                setState(() {
-                  showPasswordChangeForm = true;
-                });
-              },
-              child: Text('Change password?')),
-          showPasswordChangeForm ? ChangeAdminPassword(
-            passwordChangeCallback: _handlePasswordChange,
-          ) : null,
-          Text(
-            'Crewmember options:'
-          ),
-          OptionSetList(),
-          showOptionSetForm
-            ? RaisedButton(
-              onPressed: () => _handleHideOptionSetForm(),
-              child: Text('Cancel add option set'))
-            : RaisedButton(
-              onPressed: () => _handleShowOptionSetForm(),
-              child: Text('Add option set?')),
-          showOptionSetForm ? AddOptionSet(
-            addOptionSetCallback: _handleOptionSetAdded
-          ) : null,
-        ].where((Object o) => o != null).toList(),
+    return Container(
+      padding: const EdgeInsets.all(20.0),
+      child: SingleChildScrollView(
+        child: Column(
+          children: <Widget>[
+            Text(
+              'Here you can control what options crewmembers have when they check in and out.',
+              style: adminTextStyle
+            ),
+            OptionSetList(),
+            Container(
+              padding: const EdgeInsets.only(bottom: 30),
+              child: _buildAddOptionSetForm(),
+            ),
+            _buildChangePasswordForm(),
+            RaisedButton(
+              child: Text('Log out of admin page', style: adminTextStyle),
+              onPressed: () => _handleLogOut(),
+            ),
+          ],
+        )
       )
     );
   }
 }
 
+/// Widget for list of option set cards. Creates a list of OptionSetCard.
 class OptionSetList extends StatefulWidget {
   const OptionSetList({Key key}): super(key: key);
 
@@ -148,6 +199,7 @@ class OptionSetList extends StatefulWidget {
   }
 }
 class OptionSetListState extends State<OptionSetList> {
+
   Widget _buildOptionSetList(List<DataCategory> categories) {
     List<Widget> categoryElements = categories.map((DataCategory dc) {
       return OptionSetCard(
@@ -180,6 +232,8 @@ class OptionSetListState extends State<OptionSetList> {
   }
 }
 
+// Widget for a single option set card. A list of these is created by
+// OptionSetList.
 class OptionSetCard extends StatefulWidget {
   final DataCategory dataCategory;
 
@@ -191,7 +245,6 @@ class OptionSetCard extends StatefulWidget {
   }
 }
 class OptionSetCardState extends State<OptionSetCard> {
-
   @override
   void initState() {
     super.initState();
@@ -243,19 +296,31 @@ class OptionSetCardState extends State<OptionSetCard> {
     Provider.of<AdminData>(context, listen:false).updateFuture(getCategories());
   }
 
-  Widget _buildOptionSet(BuildContext context) {
+  Widget build(BuildContext context) {
     DataCategory dc = widget.dataCategory;
     return Card(
-      child: Column(
+      child: Container(
+        padding: const EdgeInsets.only(top: 15, bottom: 15, left: 30, right: 30),
+        child: Column(
           children: [
-            Text('${dc.title} checkouts.\nA crewmember must enter:'),
+            Text(
+              'When checking out: ${dc.title}, a crewmember must enter:',
+              style: adminTextStyle,
+            ),
             ...dc.properties.map((DataProperty dp) {
               if (dp.type == DataType.number) {
-                return Text('${dp.title} (only numbers allowed)');
+                return Text(
+                  '${dp.title} (only numbers allowed)',
+                  style: adminTextStyle
+                );
               }
-              return Text('${dp.title}');
+              return Text(
+                '${dp.title}',
+                style: adminTextStyle
+              );
             }).toList(),
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
                 IconButton(
                   icon: Icon(Icons.edit),
@@ -268,15 +333,13 @@ class OptionSetCardState extends State<OptionSetCard> {
               ],
             ),
           ]
+        ),
       ),
     );
   }
-
-  Widget build(BuildContext context) {
-    return _buildOptionSet(context);
-  }
 }
 
+/// A form that handles user changes to the admin password.
 class ChangeAdminPassword extends StatefulWidget {
   final Function passwordChangeCallback;
 
@@ -340,69 +403,77 @@ class ChangeAdminPasswordState extends State<ChangeAdminPassword> {
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: Card(
-        child: Column(
-          children: <Widget>[
-            Text('Change password'),
-            TextFormField(
-              obscureText: true,
-              controller: _oldPasswordController,
-              validator: (value) {
-                if (value.isEmpty) {
-                  return 'This field must be filled out.';
-                }
-                return null;
-              },
-              decoration: const InputDecoration(
-                labelText: 'Old password',
-              ),
+      child: Column(
+        children: <Widget>[
+          Divider(),
+          TextFormField(
+            obscureText: true,
+            controller: _oldPasswordController,
+            validator: (value) {
+              if (value.isEmpty) {
+                return 'This field must be filled out.';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              labelText: 'Old password',
             ),
-            TextFormField(
-              obscureText: true,
-              controller: _newPasswordController,
-              validator: (value) {
-                if (value.isEmpty) {
-                  return 'This field must be filled out.';
-                }
-                if (value.length < 5) {
-                  return 'Password must be at least 5 characters long.';
-                }
-                return null;
-              },
-              decoration: const InputDecoration(
-                labelText: 'New password',
-              ),
+          ),
+          TextFormField(
+            obscureText: true,
+            controller: _newPasswordController,
+            validator: (value) {
+              if (value.isEmpty) {
+                return 'This field must be filled out.';
+              }
+              if (value.length < 5) {
+                return 'Password must be at least 5 characters long.';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              labelText: 'New password',
             ),
-            TextFormField(
-              obscureText: true,
-              controller: _newPasswordValidateController,
-              validator: (value) {
-                if (value.isEmpty) {
-                  return 'This field must be filled out.';
-                }
-                if (value != _newPasswordController.text) {
-                  return 'Confirm password must match password.';
-                }
-                return null;
-              },
-              decoration: const InputDecoration(
-                labelText: 'Admin password',
-              ),
+          ),
+          TextFormField(
+            obscureText: true,
+            controller: _newPasswordValidateController,
+            validator: (value) {
+              if (value.isEmpty) {
+                return 'This field must be filled out.';
+              }
+              if (value != _newPasswordController.text) {
+                return 'Confirm password must match password.';
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              labelText: 'Admin password',
             ),
-            RaisedButton(
-              child: Text('Submit'),
-              onPressed: loadingAfterButtonPress
-                ? null
-                : () => _handleChangePassword()
+          ),
+          RaisedButton(
+            child: Text(
+              'Submit',
+              style: adminTextStyle
             ),
-            Text(infoText),
-          ],
-        )
+            onPressed: loadingAfterButtonPress
+              ? null
+              : () => _handleChangePassword()
+          ),
+          Text(
+            infoText,
+            style: TextStyle(
+              fontSize: adminTextStyle.fontSize - 2.0
+            )
+          ),
+          Divider(),
+        ],
       )
     );
   }
 }
 
+/// A form that handles user additions of option sets.
 class AddOptionSet extends StatefulWidget {
   final Function addOptionSetCallback;
 
@@ -488,7 +559,7 @@ class AddOptionSetState extends State<AddOptionSet> {
               },
               decoration: const InputDecoration(
                 hintText: 'A required detail (ex. name)',
-                labelText: 'Required info for checkout',
+                labelText: 'Option set field',
               ),
             ),
           ),
@@ -519,6 +590,7 @@ class AddOptionSetState extends State<AddOptionSet> {
       key: _optionSetFormKey,
       child: Column(
         children: [
+          Divider(),
           /// First, create the field where user can define an option set's
           /// name.
           TextFormField(
@@ -537,21 +609,22 @@ class AddOptionSetState extends State<AddOptionSet> {
           ...propertyFields,
           /// Finally, create options for adding more properties to this new
           /// option set, and submission.
-          RaisedButton(
+          IconButton(
+            iconSize: 32,
+            icon: Icon(Icons.add_circle_outline),
             onPressed: () => _handleAddOptionSetProperty(),
-            child: Text('Add property?')
           ),
           Text(
-            'Note: you won\'t need to add properties for check-in and check-out time. These are handled automatically.',
+            'Note: you won\'t need to add properties for check-in and check-out time. These are collected automatically.',
           ),
-          Row(
-            children: <Widget>[
-              RaisedButton(
-                onPressed: () => _handleAddOptionSet(),
-                child: Text('Submit'),
-              ),
-            ],
-          )
+          RaisedButton(
+            onPressed: () => _handleAddOptionSet(),
+            child: Text(
+              'Submit New Option Set',
+              style: adminTextStyle,
+            ),
+          ),
+          Divider(),
         ]
       )
     );

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
 
+TextStyle adminTextStyle = TextStyle(
+  fontSize: 18.0
+);
+
 class EditOptionSet extends StatefulWidget {
   final DataCategory dataCategory;
 
@@ -92,7 +96,7 @@ class EditOptionSetState extends State<EditOptionSet> {
               },
               decoration: const InputDecoration(
                 hintText: 'A required detail (ex. name)',
-                labelText: 'Required info for checkout',
+                labelText: 'Option set field',
               ),
             ),
           ),
@@ -123,48 +127,51 @@ class EditOptionSetState extends State<EditOptionSet> {
       appBar: AppBar(
         title: Text('Edit ${widget.dataCategory.title}')
       ),
-      body: SingleChildScrollView(
-        child: Form(
-          key: _optionSetFormKey,
-          child: Column(
-            children: [
-              /// First, create the field where user can define an option set's
-              /// name.
-              TextFormField(
-                controller: _optionSetNameController,
-                validator: (value) {
-                  if (value.isEmpty) {
-                    return 'This field must be filled out.';
-                  }
-                  return null;
-                },
-                decoration: const InputDecoration(
-                  hintText: 'A broad check-out category (ex. Vehicle, Fuel Card...)',
-                  labelText: 'Option set name',
-                ),
-              ),
-              ...propertyFields,
-              /// Finally, create options for adding more properties to this new
-              /// option set, and submission.
-              RaisedButton(
-                  onPressed: () => _handleAddOptionSetProperty(),
-                  child: Text('Add property?')
-              ),
-              Text(
-                'Note: you won\'t need to add properties for check-in and check-out time. These are handled automatically.',
-              ),
-              Row(
-                children: <Widget>[
-                  RaisedButton(
-                    onPressed: () => _handleEditSubmit(context),
-                    child: Text('Submit'),
+      body: Container(
+        padding: const EdgeInsets.all(20.0),
+        child: SingleChildScrollView(
+          child: Form(
+            key: _optionSetFormKey,
+            child: Column(
+              children: [
+                /// First, create the field where user can define an option set's
+                /// name.
+                TextFormField(
+                  controller: _optionSetNameController,
+                  validator: (value) {
+                    if (value.isEmpty) {
+                      return 'This field must be filled out.';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                    hintText: 'A broad check-out category (ex. Vehicle, Fuel Card...)',
+                    labelText: 'Option set name',
                   ),
-                ],
-              )
-            ]
+                ),
+                ...propertyFields,
+                /// Finally, create options for adding more properties to this new
+                /// option set, and submission.
+                IconButton(
+                  iconSize: 32,
+                  icon: Icon(Icons.add_circle_outline),
+                  onPressed: () => _handleAddOptionSetProperty(),
+                ),
+                Text(
+                  'Note: you won\'t need to add properties for check-in and check-out time. These are handled automatically.',
+                ),
+                RaisedButton(
+                  onPressed: () => _handleEditSubmit(context),
+                  child: Text(
+                    'Submit',
+                    style: adminTextStyle,
+                  ),
+                ),
+              ]
+            )
           )
         )
-      ),
+      )
     );
   }
 }
