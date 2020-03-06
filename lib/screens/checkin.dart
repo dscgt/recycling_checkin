@@ -1,9 +1,3 @@
-/// TODOS:
-/// - checkin confirmation box
-/// - style admin page and records page--quickly!
-/// - error messaging and handling--perhaps a default error page that users are directed to, then when they click they can try to "reload" the page they were on?
-/// - handle button mashes
-
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
@@ -21,25 +15,30 @@ class CheckIn extends StatefulWidget {
 }
 
 class CheckInState extends State<CheckIn> {
+  /// Reference for future that retrieves records indicating a checkout.
   Future<List<Record>> _recordsFuture;
+
+  /// A map of category ID to a DataCategory. For faster metadata lookups,
+  /// especially of data category names.
+  Map<String, DataCategory> categoriesMeta = {};
 
   initState() {
     super.initState();
-    _recordsFuture = getRecords(true);
+    _recordsFuture = getRecords();
   }
 
-  _handleConfirmCheckIn(String recordId) async {
-    await checkin(recordId);
+  void _handleConfirmCheckIn(Record record) async {
+    await checkin(record); /// TODO: handle submission error
     Navigator.of(context).pop(ConfirmAction.CONFIRM);
+
     /// After a check-in, refresh record data by restarting FutureBuilder's
-    /// future. Not ideal; ideally, we sidestep this entirely with a
-    /// StreamBuilder, but Sembast doesn't support stream-based pulling.
+    /// future.
     setState(() {
-      _recordsFuture = getRecords(true);
+      _recordsFuture = getRecords();
     });
   }
 
-  _handleCheckIn(BuildContext context, String recordId) async {
+  void _handleCheckIn(BuildContext context, Record record) async {
     showDialog<ConfirmAction>(
       context: context,
       barrierDismissible: true,
@@ -54,7 +53,7 @@ class CheckInState extends State<CheckIn> {
               child: const Text('CANCEL'),
             ),
             FlatButton(
-              onPressed: () => _handleConfirmCheckIn(recordId),
+              onPressed: () => _handleConfirmCheckIn(record),
               child: const Text('CONFIRM'),
             ),
           ],
@@ -63,7 +62,41 @@ class CheckInState extends State<CheckIn> {
     );
   }
 
-  Widget buildCard(Record record) {
+  Widget _buildErrorView() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        Container(
+          padding: EdgeInsets.all(20.0),
+          child: Text(
+            'Oops! We ran into an error retrieving things currently checked out. Wait'
+            ' a bit, then hit "Refresh" below. Contact an administrator if this keeps'
+            ' happening.',
+            style: TextStyle(
+              fontSize: 22.0
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        RaisedButton(
+          onPressed: () {
+            setState(() {
+              /// Attempt another retrieval by refreshing records future.
+              _recordsFuture = getRecords();
+            });
+          },
+          child: Text(
+            'Refresh',
+            style: TextStyle(
+              fontSize: 16.0
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCard(Record record) {
     if (record.id == null) {
       throw new RangeError('Record without an ID retrieved. Cannot be rendered.');
     }
@@ -92,7 +125,6 @@ class CheckInState extends State<CheckIn> {
       child: Container(
         padding: const EdgeInsets.only(top: 8.0, bottom: 8.0, right: 15.0, left: 15.0),
         child: Row(
-//          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Expanded(
               child: Container(
@@ -113,7 +145,7 @@ class CheckInState extends State<CheckIn> {
               )
             ),
             RaisedButton(
-              onPressed: () => _handleCheckIn(context, record.id),
+              onPressed: () => _handleCheckIn(context, record),
               child: Text('Check In',
                 style: TextStyle(
                   fontSize: 20.0
@@ -131,7 +163,10 @@ class CheckInState extends State<CheckIn> {
     return FutureBuilder<List<Record>>(
       future: _recordsFuture,
       builder: (BuildContext context, AsyncSnapshot<List<Record>> snapshot) {
-        if (snapshot.hasData) {
+        if (snapshot.hasError) {
+          print(snapshot.error);
+          return _buildErrorView();
+        } else if (snapshot.hasData) {
           if(snapshot.data.length == 0) {
             return Container(
               alignment: Alignment.center,
@@ -158,7 +193,7 @@ class CheckInState extends State<CheckIn> {
                 ),
                 Expanded(
                   child: ListView(
-                    children: snapshot.data.map(buildCard).toList()
+                    children: snapshot.data.map(_buildCard).toList()
                   ),
                 )
               ],

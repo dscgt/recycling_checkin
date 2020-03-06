@@ -7,12 +7,12 @@
 // https://flutter.dev/docs/cookbook/persistence/sqlite
 
 import 'package:flutter/material.dart';
-import 'package:recycling_checkin/screens/admin_builder.dart';
 import 'package:recycling_checkin/screens/checkin.dart';
 import 'package:recycling_checkin/screens/checkout.dart';
-import 'package:recycling_checkin/screens/records.dart';
 
-void main() => runApp(App());
+void main() {
+  runApp(App());
+}
 
 class App extends StatelessWidget {
   // This widget is the root of your application.
@@ -41,8 +41,7 @@ class Main extends StatefulWidget {
 
 class _MainState extends State<Main> {
 
-  /// The ID of the screen to display. 0 is checkout, 1 is checkin, 2 is
-  /// records, 3 initiates admin login.
+  /// The ID of the screen to display. 0 is checkout, 1 is checkin.
   int _view = 0;
 
   _handleTapNavigation(int index) {
@@ -55,13 +54,7 @@ class _MainState extends State<Main> {
   Widget build(BuildContext context) {
     Widget toDisplay;
     String appBarText;
-    if (_view == 3) {
-      toDisplay = AdminBuilder();
-      appBarText = 'Admin';
-    } else if (_view == 2) {
-      toDisplay = Records();
-      appBarText = 'Records';
-    } else if (_view == 1) {
+    if (_view == 1) {
       toDisplay = CheckIn();
       appBarText = 'Check In';
     } else { // view is 0, or defaults to it
@@ -83,14 +76,6 @@ class _MainState extends State<Main> {
           BottomNavigationBarItem(
             icon: Icon(Icons.check),
             title: Text('Check In'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.view_list),
-            title: Text('Records'),
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            title: Text('Admin'),
           ),
         ],
         currentIndex: _view,

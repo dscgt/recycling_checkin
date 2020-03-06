@@ -1,9 +1,6 @@
 
 import 'package:flutter/material.dart';
 
-/// Admin authentication states for Widgets that affect admin authentication.
-enum AdminAuthenticationState { NO, YES }
-
 enum DataType { string, number }
 
 /// DataProperty transformed for forms.
@@ -53,26 +50,17 @@ class Record {
   final String category;
   final Map<String, dynamic> properties;
   DateTime checkoutTime;
-  DateTime checkinTime;
   String id;
 
   Record({
     this.category,
     this.properties,
-    checkinTime,
-    checkoutTime,
+    this.checkoutTime,
     this.id
-  }) {
-    // don't allow for checkinTimes unless a checkoutTime is also specified
-    if (checkinTime != null && checkoutTime == null) {
-      throw new RangeError('Record with a check-in time cannot be created without a check-out time.');
-    }
-    this.checkoutTime = checkoutTime;
-    this.checkinTime = checkinTime;
-  }
+  });
 
   @override
   String toString() {
-    return 'Record { id: $id, category: $category, properties: $properties, checkout: $checkoutTime, checkin: $checkinTime} ';
+    return 'Record { id: $id, category: $category, properties: $properties, checkout: $checkoutTime} ';
   }
 }

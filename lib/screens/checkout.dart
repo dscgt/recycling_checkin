@@ -34,43 +34,75 @@ class CheckOutState extends State<CheckOut> {
   /// forms.
   final _formKey = GlobalKey<FormState>();
 
+  /// Information to display to the user if needed.
+  String infoText = '';
+
   @override
   void initState() {
     super.initState();
-    getCategories().then((List<DataCategory> categories) {
+    attemptGetCategories();
+  }
 
-      // build state objects from retrieved categories
-
-      List<String> theseAvailableTypes = categories.map((DataCategory dc)  => dc.title).toList();
-
-      Map<String, Map<String, dynamic>> theseAvailablePropertiesMeta = {};
-      categories.forEach((DataCategory dc) {
-        theseAvailablePropertiesMeta[dc.title] = {};
-        dc.properties.forEach((DataProperty dp) {
-          theseAvailablePropertiesMeta[dc.title][dp.title] = dp.type;
+  attemptGetCategories() async {
+    List<DataCategory> categories;
+    try {
+      categories = await getCategories();
+      initCategoriesState(categories);
+    } catch (e, stack) {
+      print(e);
+      print(stack);
+      try {
+        categories = await getCachedCategories();
+        /// By now, getting categories from cloud DB failed, so we succesfully
+        /// retrieved categories from local cache.
+        initCategoriesState(categories);
+        setState(() {
+          loading = false;
+          infoText = 'Warning: There was a problem getting the most recent checkout options. The options you see may be outdated.';
         });
-      });
-
-      Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
-      categories.forEach((DataCategory dc) {
-        theseAvailableProperties[dc.title] = {};
-        dc.properties.forEach((DataProperty dp) {
-          TextEditingController thisController = TextEditingController();
-          theseAvailableProperties[dc.title][dp.title] = thisController;
+      } catch (e, stack) {
+        print(e);
+        print(stack);
+        /// By now, getting categories from cloud DB failed, and getting
+        /// categories from local cache failed as well.
+        setState(() {
+          loading = false;
+          infoText = 'ERROR: There was an error: ${e.toString()}';
         });
-      });
+      }
+    }
+  }
 
-      // Still have to setState inside asynchronous code to trigger UI rebuild,
-      // even within initState()
-      setState(() {
-        availableTypes = theseAvailableTypes;
-        checkoutPropertiesMeta = theseAvailablePropertiesMeta;
-        checkoutType = availableTypes.length > 0
+  void initCategoriesState(List<DataCategory> categories) {
+    // build state objects from retrieved categories
+    List<String> theseAvailableTypes = categories.map((DataCategory dc)  => dc.title).toList();
+    Map<String, Map<String, dynamic>> theseAvailablePropertiesMeta = {};
+    categories.forEach((DataCategory dc) {
+      theseAvailablePropertiesMeta[dc.title] = {};
+      dc.properties.forEach((DataProperty dp) {
+        theseAvailablePropertiesMeta[dc.title][dp.title] = dp.type;
+      });
+    });
+
+    Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
+    categories.forEach((DataCategory dc) {
+      theseAvailableProperties[dc.title] = {};
+      dc.properties.forEach((DataProperty dp) {
+        TextEditingController thisController = TextEditingController();
+        theseAvailableProperties[dc.title][dp.title] = thisController;
+      });
+    });
+
+    // Still have to setState inside asynchronous code to trigger UI rebuild,
+    // even within initState()
+    setState(() {
+      availableTypes = theseAvailableTypes;
+      checkoutPropertiesMeta = theseAvailablePropertiesMeta;
+      checkoutType = availableTypes.length > 0
           ? availableTypes[0]
           : null;
-        checkoutProperties = theseAvailableProperties;
-        loading = false;
-      });
+      checkoutProperties = theseAvailableProperties;
+      loading = false;
     });
   }
 
@@ -106,6 +138,7 @@ class CheckOutState extends State<CheckOut> {
       category: checkoutType,
       properties: theseProperties
     );
+    /// TODO: Handle submisson errors
     await checkout(thisRecord);
     Scaffold.of(context).showSnackBar(
       SnackBar(
@@ -121,15 +154,31 @@ class CheckOutState extends State<CheckOut> {
       return Loading();
     }
 
+    Widget informationText = Text(
+      infoText,
+      style: TextStyle(
+        fontSize: 16.0,
+        color: Colors.red
+      )
+    );
+
     if (availableTypes.length == 0) {
       return Container(
-        alignment: Alignment.center,
         padding: EdgeInsets.only(left: 75.0, right: 75.0),
-        child: Text('There aren\'t any things to checkout. If you believe this is in error, please contact your administrator.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24.0
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            informationText,
+            Container(
+              padding: EdgeInsets.only(top: 20.0),
+              child: Text('There aren\'t any things to checkout. If you believe this is in error, please contact your administrator.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 24.0
+                ),
+              )
+            )
+          ],
         )
       );
     }
@@ -165,9 +214,10 @@ class CheckOutState extends State<CheckOut> {
     ]);
 
     return Container(
-      padding: EdgeInsets.only(left: 75.0, right: 75.0),
+      padding: EdgeInsets.only(left: 75.0, right: 75.0, top: 20.0),
       child: Column(
         children: [
+          informationText,
           DropdownButton<String>(
             value: checkoutType,
             icon: Icon(Icons.arrow_drop_down),
