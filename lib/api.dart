@@ -12,9 +12,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 final String localDbDataCategoriesName = 'dataCategories';
 final String localDbDataRecordsName = 'dataRecords';
-final Firestore db = Firestore.instance;
 final String recordsCollectionName = 'test_records';
 final String dataCategoriesCollectionName = 'test_models';
+final Firestore db = Firestore.instance;
 
 /// Gets the path on local filesystem that will be used to reference local
 /// storage for Sembast.
@@ -27,6 +27,11 @@ Future<String> getLocalDbPath() async {
 /// database's cache of data categories.
 Future<List<Classes.DataCategory>> getCategories() async {
   return db.collection('test_models').getDocuments().then((QuerySnapshot snaps) {
+    /// Handle offline persistence of queried categories, to give us more
+    /// control of error messages, instead of letting Firebase do it.
+    if (snaps.metadata.isFromCache) {
+      throw new Exception('No internet connection!');
+    }
     List<Classes.DataCategory> categories = snaps.documents.map((DocumentSnapshot snap) {
       return Classes.DataCategory(
         title: snap.data['title'],
@@ -95,7 +100,7 @@ Future<void> updateCachedCategories(List<Classes.DataCategory> categories) async
       'properties': category.properties.map((Classes.DataProperty prop) {
         return {
           'title': prop.title,
-          'type': '${prop.type}'
+          'type': dataTypeToString(prop.type)
         };
       }).toList()
     };
@@ -146,12 +151,20 @@ Future<dynamic> checkin(Classes.Record record) async {
     // delete from local cache
     store.record(record.id).delete(localDb),
     // submit to Firebase
-    db.collection(recordsCollectionName).add({
-      'categoryId': record.categoryId,
-      'checkoutTime': record.checkoutTime,
-      'checkinTime': DateTime.now(),
-      'properties': record.properties
-    })
+    Future.any([
+      /// TODO: Firebase creations when offline never resolve, even though they
+      /// do (usually) sync properly when online. This results in a future
+      /// that never resolves, thus, this function assumes a successful
+      /// creation upon a timeout of 5 seconds. This is a dangerous assumption
+      /// to make; handle this better.
+      Future.delayed(Duration(seconds: 5)).then((onValue) => null),
+      db.collection(recordsCollectionName).add({
+        'categoryId': record.categoryId,
+        'checkoutTime': record.checkoutTime,
+        'checkinTime': DateTime.now(),
+        'properties': record.properties
+      })
+    ])
   ]);
 }
 

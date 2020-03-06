@@ -52,7 +52,13 @@ class CheckInState extends State<CheckIn> {
   }
 
   void _handleConfirmCheckIn(Record record) async {
-    await checkin(record); /// TODO: handle submission error
+    /// TODO: handle submission error
+    ///   2) checking in when offline results in a future that never finishes
+    ///   (Firebase implementation). This is the reason this asynchronous call
+    ///   is not handled like it should. Could lead to unexpected behavior
+    ///   down the line.
+    await checkin(record);
+
     Navigator.of(context).pop(ConfirmAction.CONFIRM);
 
     /// After a check-in, refresh record data by restarting FutureBuilder's
@@ -65,22 +71,36 @@ class CheckInState extends State<CheckIn> {
   void _handleCheckIn(BuildContext context, Record record) async {
     showDialog<ConfirmAction>(
       context: context,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Are you sure you want to check this in?'),
-          actions: <Widget>[
-            FlatButton(
-              onPressed: () {
-                Navigator.of(context).pop(ConfirmAction.CANCEL);
-              },
-              child: const Text('CANCEL'),
-            ),
-            FlatButton(
-              onPressed: () => _handleConfirmCheckIn(record),
-              child: const Text('CONFIRM'),
-            ),
-          ],
+        bool loadingAfterButtonPress = false;
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: const Text('Are you sure you want to check this in?'),
+              actions: <Widget>[
+                FlatButton(
+                  onPressed: loadingAfterButtonPress
+                    ? null
+                    : () {
+                        Navigator.of(context).pop(ConfirmAction.CANCEL);
+                      },
+                  child: const Text('CANCEL'),
+                ),
+                FlatButton(
+                  onPressed: loadingAfterButtonPress
+                    ? null
+                    : () {
+                        setState(() {
+                          loadingAfterButtonPress = true;
+                        });
+                        _handleConfirmCheckIn(record);
+                      },
+                  child: const Text('CONFIRM'),
+                ),
+              ],
+            );
+          }
         );
       }
     );

@@ -13,6 +13,17 @@ DataType stringToDataType(String s) {
   }
 }
 
+String dataTypeToString(DataType d) {
+  if (d == DataType.number) {
+    return 'number';
+  } else if (d == DataType.string) {
+    return 'string';
+  } else {
+    // TODO: throw error instead of defaulting and catch elsewhere
+    return 'string';
+  }
+}
+
 String dateTimeToString(DateTime dt) {
   DateTime local = dt.toLocal();
   String toReturn = DateFormat.yMMMMd().add_jm().format(local);

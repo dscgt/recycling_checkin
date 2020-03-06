@@ -50,6 +50,7 @@ class CheckOutState extends State<CheckOut> {
   attemptGetCategories() async {
     List<DataCategory> categories;
     try {
+      /// By now, we have successfully retrieved categories from cloud DB.
       categories = await getCategories();
       initCategoriesState(categories);
     } catch (e, stack) {
@@ -57,7 +58,7 @@ class CheckOutState extends State<CheckOut> {
       print(stack);
       try {
         categories = await getCachedCategories();
-        /// By now, getting categories from cloud DB failed, so we succesfully
+        /// By now, getting categories from cloud DB failed, so we successfully
         /// retrieved categories from local cache.
         initCategoriesState(categories);
         setState(() {
@@ -223,30 +224,32 @@ class CheckOutState extends State<CheckOut> {
 
     return Container(
       padding: EdgeInsets.only(left: 75.0, right: 75.0, top: 20.0),
-      child: Column(
-        children: [
-          informationText,
-          DropdownButton<String>(
-            value: checkoutType,
-            icon: Icon(Icons.arrow_drop_down),
-            onChanged: (String newValue) {
-              setState(() {
-                checkoutType = newValue;
-              });
-            },
-            items: availableTypes.map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            informationText,
+            DropdownButton<String>(
+              value: checkoutType,
+              icon: Icon(Icons.arrow_drop_down),
+              onChanged: (String newValue) {
+                setState(() {
+                  checkoutType = newValue;
+                });
+              },
+              items: availableTypes.map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                )
+              ).toList(),
+            ),
+            Form(
+              key: _formKey,
+              child: Column(
+                children: formElements
               )
-            ).toList(),
-          ),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: formElements
-            )
-          ),
-        ]
+            ),
+          ]
+        ),
       )
     );
   }
