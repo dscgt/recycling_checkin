@@ -18,10 +18,14 @@ class CheckOutState extends State<CheckOut> {
   /// selection.
   List<String> availableTypes = [];
 
+  /// A record of checkout type -> DataCategory. For fast lookups of data
+  /// category metadata.
+  Map<String, DataCategory> checkoutMeta = {};
+
   /// A record of checkout type -> checkout property (ex. Vehicle #, Name,
-  /// any detail relevant to a checkout) -> form of that property (ex. string,
-  /// number).
-  Map<String, Map<String, dynamic>> checkoutPropertiesMeta = {};
+  /// any detail relevant to a checkout) -> DataProperty. For fast lookups
+  /// about data category's properties' metadata.
+  Map<String, Map<String, DataProperty>> checkoutPropertiesMeta = {};
 
   /// The type of checkout selected by the user. Defaults to the first checkout
   /// type retrieved.
@@ -76,14 +80,17 @@ class CheckOutState extends State<CheckOut> {
   void initCategoriesState(List<DataCategory> categories) {
     // build state objects from retrieved categories
     List<String> theseAvailableTypes = categories.map((DataCategory dc)  => dc.title).toList();
-    Map<String, Map<String, dynamic>> theseAvailablePropertiesMeta = {};
+    Map<String, DataCategory> theseCheckoutMeta = {};
+    categories.forEach((DataCategory dc) {
+      theseCheckoutMeta[dc.title] = dc;
+    });
+    Map<String, Map<String, DataProperty>> theseAvailablePropertiesMeta = {};
     categories.forEach((DataCategory dc) {
       theseAvailablePropertiesMeta[dc.title] = {};
       dc.properties.forEach((DataProperty dp) {
-        theseAvailablePropertiesMeta[dc.title][dp.title] = dp.type;
+        theseAvailablePropertiesMeta[dc.title][dp.title] = dp;
       });
     });
-
     Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
     categories.forEach((DataCategory dc) {
       theseAvailableProperties[dc.title] = {};
@@ -97,6 +104,7 @@ class CheckOutState extends State<CheckOut> {
     // even within initState()
     setState(() {
       availableTypes = theseAvailableTypes;
+      checkoutMeta = theseCheckoutMeta;
       checkoutPropertiesMeta = theseAvailablePropertiesMeta;
       checkoutType = availableTypes.length > 0
           ? availableTypes[0]
@@ -135,7 +143,7 @@ class CheckOutState extends State<CheckOut> {
       theseProperties[propertyName] = te.text;
     });
     Record thisRecord = Record(
-      category: checkoutType,
+      categoryId: checkoutMeta[checkoutType].id,
       properties: theseProperties
     );
     /// TODO: Handle submisson errors
@@ -186,7 +194,7 @@ class CheckOutState extends State<CheckOut> {
     List<Widget> formElements = [];
     checkoutProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
       TextInputType thisKeyboardType = TextInputType.text;
-      if (checkoutPropertiesMeta[checkoutType][propertyTitle] == DataType.number) {
+      if (checkoutPropertiesMeta[checkoutType][propertyTitle].type == DataType.number) {
         thisKeyboardType = TextInputType.number;
       }
       formElements.add(

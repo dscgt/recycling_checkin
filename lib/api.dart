@@ -65,7 +65,7 @@ Future<List<Classes.DataCategory>> getCachedCategories() async {
   return store.find(localDb, finder: finder).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
       return Classes.DataCategory(
-        id: snap.key,
+        id: snap['id'],
         title: snap['title'],
         properties: snap['properties'].map((record) {
           return Classes.DataProperty(
@@ -119,11 +119,10 @@ Future<List<Classes.Record>> getRecords() async {
     return snapshots.map((RecordSnapshot snap) {
       // convert snapshot to Record
       Map<String, dynamic> otherProps = Map.fromEntries(snap.value.entries);
-      otherProps.remove('category');
-      otherProps.remove('checkinTime');
+      otherProps.remove('categoryId');
       otherProps.remove('checkoutTime');
       Classes.Record toReturn = Classes.Record(
-        category: snap['category'],
+        categoryId: snap['categoryId'],
         properties: otherProps,
         id: snap.key
       );
@@ -148,7 +147,7 @@ Future<dynamic> checkin(Classes.Record record) async {
     store.record(record.id).delete(localDb),
     // submit to Firebase
     db.collection(recordsCollectionName).add({
-      'categoryId': record.category,
+      'categoryId': record.categoryId,
       'checkoutTime': record.checkoutTime,
       'checkinTime': DateTime.now(),
       'properties': record.properties
@@ -164,7 +163,7 @@ Future<dynamic> checkout(Classes.Record record) async {
   StoreRef store = stringMapStoreFactory.store(localDbDataRecordsName);
 
   Map<String, dynamic> toAdd = {
-    'category': record.category,
+    'categoryId': record.categoryId,
     'checkoutTime': record.checkoutTime,
   };
   toAdd.addAll(record.properties);

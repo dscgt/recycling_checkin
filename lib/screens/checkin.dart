@@ -22,9 +22,33 @@ class CheckInState extends State<CheckIn> {
   /// especially of data category names.
   Map<String, DataCategory> categoriesMeta = {};
 
+  /// Information to display to the user if need be.
+  String infoText = '';
+
   initState() {
     super.initState();
     _recordsFuture = getRecords();
+    _getCategoriesMeta();
+  }
+
+  _getCategoriesMeta() async {
+    try {
+      Map<String, DataCategory> categoriesMetaToAdd = {};
+      List<DataCategory> dcs = await getCachedCategories();
+      dcs.forEach((DataCategory dc) {
+        categoriesMetaToAdd[dc.id] = dc;
+      });
+      setState(() {
+        categoriesMeta = categoriesMetaToAdd;
+      });
+    } catch (e, stack) {
+      print(e);
+      print(stack);
+      setState(() {
+        infoText = 'Warning: there was an error retrieving category names. Some'
+        ' of this information may look a little jumbled.';
+      });
+    }
   }
 
   void _handleConfirmCheckIn(Record record) async {
@@ -133,7 +157,11 @@ class CheckInState extends State<CheckIn> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '${record.category} checkout',
+                      '${
+                        categoriesMeta[record.categoryId] != null
+                          ? categoriesMeta[record.categoryId].title
+                          : record.categoryId
+                      } checkout',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: cardFontSize
@@ -183,6 +211,13 @@ class CheckInState extends State<CheckIn> {
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: <Widget>[
+                Text(
+                  infoText,
+                  style: TextStyle(
+                    fontSize: 16.0,
+                    color: Colors.red
+                  ),
+                ),
                 Container(
                   padding: EdgeInsets.only(bottom: 20.0),
                   child: Text('These are the things that are currently checked out. When you are ready to check an item in, locate your item and tap "Check in".',

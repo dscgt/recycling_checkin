@@ -47,13 +47,13 @@ class DataCategory {
 }
 
 class Record {
-  final String category;
+  final String categoryId;
   final Map<String, dynamic> properties;
   DateTime checkoutTime;
   String id;
 
   Record({
-    this.category,
+    this.categoryId,
     this.properties,
     this.checkoutTime,
     this.id
@@ -61,6 +61,6 @@ class Record {
 
   @override
   String toString() {
-    return 'Record { id: $id, category: $category, properties: $properties, checkout: $checkoutTime} ';
+    return 'Record { id: $id, categoryId: $categoryId, properties: $properties, checkout: $checkoutTime} ';
   }
 }
