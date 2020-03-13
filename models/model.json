@@ -1,0 +1,12 @@
+{
+  "fields": [
+    {
+      "title": "title_here",
+      "type": "type_here",
+      "optional": false,
+      "groupId": "groupId_here",
+      "delay": true
+    }
+  ],
+  "title": "title_here"
+}

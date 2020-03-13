@@ -1,0 +1,11 @@
+{
+  "modelId": "modelId_here",
+  "modelTitle": "modelTitle_here",
+  "checkinTime": "checkinTime_here",
+  "checkoutTime": "checkoutTime_here",
+  "properties": {
+    "key1": "value1",
+    "key2": "value2",
+    "key3": "value3",
+  }
+}
