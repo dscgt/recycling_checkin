@@ -18,14 +18,14 @@ class CheckOutState extends State<CheckOut> {
   /// selection.
   List<String> availableTypes = [];
 
-  /// A record of checkout type -> DataCategory. For fast lookups of data
+  /// A record of checkout type -> Model. For fast lookups of data
   /// category metadata.
-  Map<String, DataCategory> checkoutMeta = {};
+  Map<String, Model> checkoutMeta = {};
 
   /// A record of checkout type -> checkout property (ex. Vehicle #, Name,
-  /// any detail relevant to a checkout) -> DataProperty. For fast lookups
+  /// any detail relevant to a checkout) -> ModelField. For fast lookups
   /// about data category's properties' metadata.
-  Map<String, Map<String, DataProperty>> checkoutPropertiesMeta = {};
+  Map<String, Map<String, ModelField>> checkoutPropertiesMeta = {};
 
   /// The type of checkout selected by the user. Defaults to the first checkout
   /// type retrieved.
@@ -48,7 +48,7 @@ class CheckOutState extends State<CheckOut> {
   }
 
   attemptGetCategories() async {
-    List<DataCategory> categories;
+    List<Model> categories;
     try {
       /// By now, we have successfully retrieved categories from cloud DB.
       categories = await getCategories();
@@ -78,24 +78,24 @@ class CheckOutState extends State<CheckOut> {
     }
   }
 
-  void initCategoriesState(List<DataCategory> categories) {
+  void initCategoriesState(List<Model> categories) {
     // build state objects from retrieved categories
-    List<String> theseAvailableTypes = categories.map((DataCategory dc)  => dc.title).toList();
-    Map<String, DataCategory> theseCheckoutMeta = {};
-    categories.forEach((DataCategory dc) {
+    List<String> theseAvailableTypes = categories.map((Model dc)  => dc.title).toList();
+    Map<String, Model> theseCheckoutMeta = {};
+    categories.forEach((Model dc) {
       theseCheckoutMeta[dc.title] = dc;
     });
-    Map<String, Map<String, DataProperty>> theseAvailablePropertiesMeta = {};
-    categories.forEach((DataCategory dc) {
+    Map<String, Map<String, ModelField>> theseAvailablePropertiesMeta = {};
+    categories.forEach((Model dc) {
       theseAvailablePropertiesMeta[dc.title] = {};
-      dc.properties.forEach((DataProperty dp) {
+      dc.properties.forEach((ModelField dp) {
         theseAvailablePropertiesMeta[dc.title][dp.title] = dp;
       });
     });
     Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
-    categories.forEach((DataCategory dc) {
+    categories.forEach((Model dc) {
       theseAvailableProperties[dc.title] = {};
-      dc.properties.forEach((DataProperty dp) {
+      dc.properties.forEach((ModelField dp) {
         TextEditingController thisController = TextEditingController();
         theseAvailableProperties[dc.title][dp.title] = thisController;
       });
@@ -144,7 +144,8 @@ class CheckOutState extends State<CheckOut> {
       theseProperties[propertyName] = te.text;
     });
     Record thisRecord = Record(
-      categoryId: checkoutMeta[checkoutType].id,
+      modelId: checkoutMeta[checkoutType].id,
+      modelTitle: checkoutMeta[checkoutType].title,
       properties: theseProperties
     );
     /// TODO: Handle submisson errors
@@ -195,7 +196,7 @@ class CheckOutState extends State<CheckOut> {
     List<Widget> formElements = [];
     checkoutProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
       TextInputType thisKeyboardType = TextInputType.text;
-      if (checkoutPropertiesMeta[checkoutType][propertyTitle].type == DataType.number) {
+      if (checkoutPropertiesMeta[checkoutType][propertyTitle].type == ModelFieldDataType.number) {
         thisKeyboardType = TextInputType.number;
       }
       formElements.add(

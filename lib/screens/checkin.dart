@@ -18,9 +18,9 @@ class CheckInState extends State<CheckIn> {
   /// Reference for future that retrieves records indicating a checkout.
   Future<List<Record>> _recordsFuture;
 
-  /// A map of category ID to a DataCategory. For faster metadata lookups,
+  /// A map of category ID to a Model. For faster metadata lookups,
   /// especially of data category names.
-  Map<String, DataCategory> categoriesMeta = {};
+  Map<String, Model> categoriesMeta = {};
 
   /// Information to display to the user if need be.
   String infoText = '';
@@ -33,9 +33,9 @@ class CheckInState extends State<CheckIn> {
 
   _getCategoriesMeta() async {
     try {
-      Map<String, DataCategory> categoriesMetaToAdd = {};
-      List<DataCategory> dcs = await getCachedCategories();
-      dcs.forEach((DataCategory dc) {
+      Map<String, Model> categoriesMetaToAdd = {};
+      List<Model> dcs = await getCachedCategories();
+      dcs.forEach((Model dc) {
         categoriesMetaToAdd[dc.id] = dc;
       });
       setState(() {
@@ -178,9 +178,9 @@ class CheckInState extends State<CheckIn> {
                   children: <Widget>[
                     Text(
                       '${
-                        categoriesMeta[record.categoryId] != null
-                          ? categoriesMeta[record.categoryId].title
-                          : record.categoryId
+                        categoriesMeta[record.modelId] != null
+                          ? categoriesMeta[record.modelId].title
+                          : record.modelId
                       } checkout',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,

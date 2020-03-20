@@ -2,21 +2,21 @@
 import 'package:intl/intl.dart';
 import 'package:recycling_checkin/classes.dart';
 
-DataType stringToDataType(String s) {
+ModelFieldDataType stringToModelFieldDataType(String s) {
   if (s == 'number') {
-    return DataType.number;
+    return ModelFieldDataType.number;
   } else if (s == 'string') {
-    return DataType.string;
+    return ModelFieldDataType.string;
   } else {
     // TODO: throw error instead of defaulting and catch elsewhere
-    return DataType.string;
+    return ModelFieldDataType.string;
   }
 }
 
-String dataTypeToString(DataType d) {
-  if (d == DataType.number) {
+String modelFieldDataTypeToString(ModelFieldDataType d) {
+  if (d == ModelFieldDataType.number) {
     return 'number';
-  } else if (d == DataType.string) {
+  } else if (d == ModelFieldDataType.string) {
     return 'string';
   } else {
     // TODO: throw error instead of defaulting and catch elsewhere

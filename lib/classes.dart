@@ -1,66 +1,78 @@
 
 import 'package:flutter/material.dart';
 
-enum DataType { string, number }
+enum ModelFieldDataType { string, number }
 
-/// DataProperty transformed for forms.
-class PropertyEntry {
-  final TextEditingController controller;
-  DataType type;
-
-  PropertyEntry({
-    @required this.controller,
-    @required this.type,
-  });
-}
-
-class DataProperty {
+class ModelField {
   final String title;
-  DataType type;
+  final bool optional;
+  final bool delay;
+  ModelFieldDataType type;
+  String groupId;
 
-  DataProperty({
-    this.title,
+  ModelField({
+    @required this.title,
+    @required this.optional,
+    @required this.delay,
     this.type,
+    this.groupId
   });
 
   @override
   String toString() {
-    return 'DataProperty { title: $title, type: $type }';
+    return 'ModelField { title: $title, type: $type }';
   }
 }
 
-class DataCategory {
+class Model {
   final String title;
-  final List<DataProperty> properties;
+  final List<ModelField> properties;
   String id;
 
-  DataCategory({
-    this.title,
-    this.properties,
+  Model({
+    @required this.title,
+    @required this.properties,
     this.id
   });
 
   @override
   String toString() {
-    return 'DataCategory { title: $title, properties: $properties ';
+    return 'Model { title: $title, properties: $properties ';
+  }
+}
+
+class Group {
+  final List<String> members;
+  final String id;
+
+  Group({
+    @required this.members,
+    @required this.id
+  });
+
+  @override
+  String toString() {
+    return 'Group $id with members $members';
   }
 }
 
 class Record {
-  final String categoryId;
+  final String modelId;
+  final String modelTitle;
   final Map<String, dynamic> properties;
   DateTime checkoutTime;
   String id;
 
   Record({
-    this.categoryId,
-    this.properties,
+    @required this.modelId,
+    @required this.modelTitle,
+    @required this.properties,
     this.checkoutTime,
     this.id
   });
 
   @override
   String toString() {
-    return 'Record { id: $id, categoryId: $categoryId, properties: $properties, checkout: $checkoutTime} ';
+    return 'Record { id: $id, modelId: $modelId, modelTitle: $modelTitle, properties: $properties, checkout: $checkoutTime} ';
   }
 }

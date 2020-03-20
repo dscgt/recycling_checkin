@@ -12,8 +12,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 final String localDbDataCategoriesName = 'dataCategories';
 final String localDbDataRecordsName = 'dataRecords';
-final String recordsCollectionName = 'test_records';
-final String dataCategoriesCollectionName = 'test_models';
+final String recordsCollectionName = 'records';
+final String modelsCollectionName = 'models';
+final String groupsCollectionName = 'groups';
 final Firestore db = Firestore.instance;
 
 /// Gets the path on local filesystem that will be used to reference local
@@ -25,27 +26,29 @@ Future<String> getLocalDbPath() async {
 
 /// Gets data categories from Cloud Firestore, and use to update local
 /// database's cache of data categories.
-Future<List<Classes.DataCategory>> getCategories() async {
-  return db.collection('test_models').getDocuments().then((QuerySnapshot snaps) {
+Future<List<Classes.Model>> getCategories() async {
+  return db.collection(modelsCollectionName).getDocuments().then((QuerySnapshot snaps) {
     /// Handle offline persistence of queried categories, to give us more
     /// control of error messages, instead of letting Firebase do it.
     if (snaps.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
-    List<Classes.DataCategory> categories = snaps.documents.map((DocumentSnapshot snap) {
-      return Classes.DataCategory(
+    List<Classes.Model> categories = snaps.documents.map((DocumentSnapshot snap) {
+      return Classes.Model(
         title: snap.data['title'],
         id: snap.documentID,
         properties: snap.data['fields'].map((dynamic field) {
-          return Classes.DataProperty(
+          return Classes.ModelField(
             title: field['title'],
+            optional: field['optional'] ?? false,
+            delay: field['delay'] ?? false,
             type: field['type'] == 'string'
-              ? Classes.DataType.string
-              : Classes.DataType.number
+              ? Classes.ModelFieldDataType.string
+              : Classes.ModelFieldDataType.number
           );
-        }).toList().cast<Classes.DataProperty>()
+        }).toList().cast<Classes.ModelField>()
       );
-    }).toList().cast<Classes.DataCategory>();
+    }).toList().cast<Classes.Model>();
 
     return Future.wait([
       updateCachedCategories(categories),
@@ -59,7 +62,7 @@ Future<List<Classes.DataCategory>> getCategories() async {
 
 /// Gets cached categories from local Sembast database. These are the categories
 /// retrieved from the last successful GET of categories from Firestore.
-Future<List<Classes.DataCategory>> getCachedCategories() async {
+Future<List<Classes.Model>> getCachedCategories() async {
   String dbPath = await getLocalDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database localDb = await dbFactory.openDatabase(dbPath);
@@ -69,15 +72,17 @@ Future<List<Classes.DataCategory>> getCachedCategories() async {
   StoreRef store = stringMapStoreFactory.store(localDbDataCategoriesName);
   return store.find(localDb, finder: finder).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) {
-      return Classes.DataCategory(
+      return Classes.Model(
         id: snap['id'],
         title: snap['title'],
         properties: snap['properties'].map((record) {
-          return Classes.DataProperty(
+          return Classes.ModelField(
             title: record['title'],
-            type: stringToDataType(record['type'])
+            optional: record['optional'] ?? false,
+            delay: record['delay'] ?? false,
+            type: stringToModelFieldDataType(record['type'])
           );
-        }).cast<Classes.DataProperty>().toList()
+        }).cast<Classes.ModelField>().toList()
       );
     }).toList();
   });
@@ -86,21 +91,21 @@ Future<List<Classes.DataCategory>> getCachedCategories() async {
 /// Replaces locally stored data categories with [categories]. Categories
 /// already stored locally will be deleted and replaced completed with
 /// [categories].
-Future<void> updateCachedCategories(List<Classes.DataCategory> categories) async {
+Future<void> updateCachedCategories(List<Classes.Model> categories) async {
   String dbPath = await getLocalDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database localDb = await dbFactory.openDatabase(dbPath);
   StoreRef store = stringMapStoreFactory.store(localDbDataCategoriesName);
 
   /// Transform [categories] to a format compatible with Sembast.
-  List<Map<String, dynamic>> categoriesToAdd = categories.map((Classes.DataCategory category) {
+  List<Map<String, dynamic>> categoriesToAdd = categories.map((Classes.Model category) {
     return {
       'title': category.title,
       'id': category.id,
-      'properties': category.properties.map((Classes.DataProperty prop) {
+      'properties': category.properties.map((Classes.ModelField prop) {
         return {
           'title': prop.title,
-          'type': dataTypeToString(prop.type)
+          'type': modelFieldDataTypeToString(prop.type)
         };
       }).toList()
     };
@@ -124,10 +129,12 @@ Future<List<Classes.Record>> getRecords() async {
     return snapshots.map((RecordSnapshot snap) {
       // convert snapshot to Record
       Map<String, dynamic> otherProps = Map.fromEntries(snap.value.entries);
-      otherProps.remove('categoryId');
+      otherProps.remove('modelId');
+      otherProps.remove('modelTitle');
       otherProps.remove('checkoutTime');
       Classes.Record toReturn = Classes.Record(
-        categoryId: snap['categoryId'],
+        modelId: snap['modelId'],
+        modelTitle: snap['modelTitle'],
         properties: otherProps,
         id: snap.key
       );
@@ -152,14 +159,15 @@ Future<dynamic> checkin(Classes.Record record) async {
     store.record(record.id).delete(localDb),
     // submit to Firebase
     Future.any([
-      /// TODO: Firebase creations when offline never resolve, even though they
+      /// TODO: Firebase writes when offline never resolve, even though they
       /// do (usually) sync properly when online. This results in a future
       /// that never resolves, thus, this function assumes a successful
       /// creation upon a timeout of 5 seconds. This is a dangerous assumption
       /// to make; handle this better.
       Future.delayed(Duration(seconds: 5)).then((onValue) => null),
       db.collection(recordsCollectionName).add({
-        'categoryId': record.categoryId,
+        'modelId': record.modelId,
+        'modelTitle': record.modelTitle,
         'checkoutTime': record.checkoutTime,
         'checkinTime': DateTime.now(),
         'properties': record.properties
@@ -176,7 +184,8 @@ Future<dynamic> checkout(Classes.Record record) async {
   StoreRef store = stringMapStoreFactory.store(localDbDataRecordsName);
 
   Map<String, dynamic> toAdd = {
-    'categoryId': record.categoryId,
+    'modelId': record.modelId,
+    'modelTitle': record.modelTitle,
     'checkoutTime': record.checkoutTime,
   };
   toAdd.addAll(record.properties);
