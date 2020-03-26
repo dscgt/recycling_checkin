@@ -7,20 +7,21 @@ ModelFieldDataType stringToModelFieldDataType(String s) {
     return ModelFieldDataType.number;
   } else if (s == 'string') {
     return ModelFieldDataType.string;
-  } else {
-    // TODO: throw error instead of defaulting and catch elsewhere
+  } else if (s == 'select') {
+    /// default to string for now
     return ModelFieldDataType.string;
+  } else {
+    throw new Exception('Illegal argument. Provided string does not convert to ModelFieldDataType');
   }
 }
 
 String modelFieldDataTypeToString(ModelFieldDataType d) {
   if (d == ModelFieldDataType.number) {
     return 'number';
-  } else if (d == ModelFieldDataType.string) {
+  } else if ( d == ModelFieldDataType.string) {
     return 'string';
   } else {
-    // TODO: throw error instead of defaulting and catch elsewhere
-    return 'string';
+    throw new Exception('Illegal argument. Provided datatype is null or not an accepted ModelFieldDataType');
   }
 }
 

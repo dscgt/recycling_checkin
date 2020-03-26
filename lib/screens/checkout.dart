@@ -14,22 +14,16 @@ class CheckOut extends StatefulWidget {
 class CheckOutState extends State<CheckOut> {
   bool loading = true;
 
-  /// The checkout types (ex. Vehicle, Fuel Card) available to the user for
+  /// The models(ex. Vehicle, Fuel Card) available to the user for
   /// selection.
-  List<String> availableTypes = [];
+  List<Model> availableTypes = [];
+  /// The model selected by the user.
+  Model selectedModel;
 
-  /// A record of checkout type -> Model. For fast lookups of data
-  /// category metadata.
-  Map<String, Model> checkoutMeta = {};
-
-  /// A record of checkout type -> checkout property (ex. Vehicle #, Name,
-  /// any detail relevant to a checkout) -> ModelField. For fast lookups
-  /// about data category's properties' metadata.
+  /// A record of model title -> model field title (ex. Vehicle #, Name))
+  /// -> ModelField. For fast lookups about data category's properties'
+  /// metadata.
   Map<String, Map<String, ModelField>> checkoutPropertiesMeta = {};
-
-  /// The type of checkout selected by the user. Defaults to the first checkout
-  /// type retrieved.
-  String checkoutType;
 
   /// Checkout details entered by the user. Defaults to all empty inputs.
   Map<String, Map<String, TextEditingController>> checkoutProperties = {};
@@ -79,23 +73,18 @@ class CheckOutState extends State<CheckOut> {
   }
 
   void initCategoriesState(List<Model> categories) {
-    // build state objects from retrieved categories
-    List<String> theseAvailableTypes = categories.map((Model dc)  => dc.title).toList();
-    Map<String, Model> theseCheckoutMeta = {};
-    categories.forEach((Model dc) {
-      theseCheckoutMeta[dc.title] = dc;
-    });
+    // build state objects from retrieved categories.
     Map<String, Map<String, ModelField>> theseAvailablePropertiesMeta = {};
     categories.forEach((Model dc) {
       theseAvailablePropertiesMeta[dc.title] = {};
-      dc.properties.forEach((ModelField dp) {
+      dc.fields.forEach((ModelField dp) {
         theseAvailablePropertiesMeta[dc.title][dp.title] = dp;
       });
     });
     Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
     categories.forEach((Model dc) {
       theseAvailableProperties[dc.title] = {};
-      dc.properties.forEach((ModelField dp) {
+      dc.fields.forEach((ModelField dp) {
         TextEditingController thisController = TextEditingController();
         theseAvailableProperties[dc.title][dp.title] = thisController;
       });
@@ -104,10 +93,9 @@ class CheckOutState extends State<CheckOut> {
     // Still have to setState inside asynchronous code to trigger UI rebuild,
     // even within initState()
     setState(() {
-      availableTypes = theseAvailableTypes;
-      checkoutMeta = theseCheckoutMeta;
+      availableTypes = categories;
       checkoutPropertiesMeta = theseAvailablePropertiesMeta;
-      checkoutType = availableTypes.length > 0
+      selectedModel = availableTypes.length > 0
           ? availableTypes[0]
           : null;
       checkoutProperties = theseAvailableProperties;
@@ -128,8 +116,8 @@ class CheckOutState extends State<CheckOut> {
 
   void clearForm() {
     setState(() {
-      checkoutProperties[checkoutType].keys.forEach((String propertyTitle) {
-        checkoutProperties[checkoutType][propertyTitle].clear();
+      checkoutProperties[selectedModel.title].keys.forEach((String propertyTitle) {
+        checkoutProperties[selectedModel.title][propertyTitle].clear();
       });
     });
   }
@@ -140,16 +128,19 @@ class CheckOutState extends State<CheckOut> {
     }
 
     Map<String, dynamic> theseProperties = {};
-    checkoutProperties[checkoutType].forEach((String propertyName, TextEditingController te) {
+    checkoutProperties[selectedModel.title].forEach((String propertyName, TextEditingController te) {
       theseProperties[propertyName] = te.text;
     });
     Record thisRecord = Record(
-      modelId: checkoutMeta[checkoutType].id,
-      modelTitle: checkoutMeta[checkoutType].title,
+      modelId: selectedModel.id,
+      modelTitle: selectedModel.title,
       properties: theseProperties
     );
     /// TODO: Handle submisson errors
-    await checkout(thisRecord);
+    await checkout(CheckedOutRecord(
+      record: thisRecord,
+      model: selectedModel
+    ));
     Scaffold.of(context).showSnackBar(
       SnackBar(
         content: Text('Checkout submitted')
@@ -193,17 +184,24 @@ class CheckOutState extends State<CheckOut> {
       );
     }
 
-    List<Widget> formElements = [];
-    checkoutProperties[checkoutType].forEach((String propertyTitle, TextEditingController te) {
+    List<Widget> formInputs = [];
+    List<String> delayedFields = [];
+    checkoutProperties[selectedModel.title].forEach((String propertyTitle, TextEditingController te) {
+      if (checkoutPropertiesMeta[selectedModel.title][propertyTitle].delay) {
+        // Skip if this is a field meant to be completed later.
+        delayedFields.add(propertyTitle);
+        return;
+      }
       TextInputType thisKeyboardType = TextInputType.text;
-      if (checkoutPropertiesMeta[checkoutType][propertyTitle].type == ModelFieldDataType.number) {
+      if (checkoutPropertiesMeta[selectedModel.title][propertyTitle].type == ModelFieldDataType.number) {
         thisKeyboardType = TextInputType.number;
       }
-      formElements.add(
+      bool isOptional = checkoutPropertiesMeta[selectedModel.title][propertyTitle].optional;
+      formInputs.add(
         TextFormField(
-          controller: checkoutProperties[checkoutType][propertyTitle],
+          controller: checkoutProperties[selectedModel.title][propertyTitle],
           validator: (value) {
-            if (value.isEmpty) {
+            if (value.isEmpty && !isOptional) {
               return 'Please enter a $propertyTitle.';
             }
             return null;
@@ -215,13 +213,6 @@ class CheckOutState extends State<CheckOut> {
         )
       );
     });
-    formElements.addAll([
-      RaisedButton(
-        onPressed: () => _handleSubmitRecord(),
-        child: Text('Check out')
-      ),
-      Text('(Date and time will be recorded automatically.)')
-    ]);
 
     return Container(
       padding: EdgeInsets.only(left: 75.0, right: 75.0, top: 20.0),
@@ -229,24 +220,36 @@ class CheckOutState extends State<CheckOut> {
         child: Column(
           children: [
             informationText,
-            DropdownButton<String>(
-              value: checkoutType,
+            DropdownButton<Model>(
+              value: selectedModel,
               icon: Icon(Icons.arrow_drop_down),
-              onChanged: (String newValue) {
+              onChanged: (Model newValue) {
                 setState(() {
-                  checkoutType = newValue;
+                  selectedModel = newValue;
                 });
               },
-              items: availableTypes.map<DropdownMenuItem<String>>((String value) => DropdownMenuItem<String>(
+              items: availableTypes.map<DropdownMenuItem<Model>>((Model value) => DropdownMenuItem<Model>(
                   value: value,
-                  child: Text(value),
+                  child: Text(value.title),
                 )
               ).toList(),
             ),
             Form(
               key: _formKey,
               child: Column(
-                children: formElements
+                children: [
+                  ...formInputs,
+                  Padding(padding: EdgeInsets.only(top: 10)),
+                  Text(delayedFields.length > 0
+                    ? 'Later, you\'ll be asked to fill out: ${delayedFields.join(', ')}.'
+                    : ''
+                  ),
+                  Text('Date and time will be recorded automatically.'),
+                  RaisedButton(
+                    onPressed: () => _handleSubmitRecord(),
+                    child: Text('Check out')
+                  ),
+                ]
               )
             ),
           ]

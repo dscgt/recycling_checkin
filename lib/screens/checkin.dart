@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
+import 'package:recycling_checkin/screens/checkin-form.dart';
 import 'package:recycling_checkin/screens/loading.dart';
 import 'package:recycling_checkin/utils.dart';
 
@@ -15,12 +16,8 @@ class CheckIn extends StatefulWidget {
 }
 
 class CheckInState extends State<CheckIn> {
-  /// Reference for future that retrieves records indicating a checkout.
-  Future<List<Record>> _recordsFuture;
-
-  /// A map of category ID to a Model. For faster metadata lookups,
-  /// especially of data category names.
-  Map<String, Model> categoriesMeta = {};
+  /// Reference for future that retrieves checkouts.
+  Future<List<CheckedOutRecord>> _recordsFuture;
 
   /// Information to display to the user if need be.
   String infoText = '';
@@ -28,30 +25,9 @@ class CheckInState extends State<CheckIn> {
   initState() {
     super.initState();
     _recordsFuture = getRecords();
-    _getCategoriesMeta();
   }
 
-  _getCategoriesMeta() async {
-    try {
-      Map<String, Model> categoriesMetaToAdd = {};
-      List<Model> dcs = await getCachedCategories();
-      dcs.forEach((Model dc) {
-        categoriesMetaToAdd[dc.id] = dc;
-      });
-      setState(() {
-        categoriesMeta = categoriesMetaToAdd;
-      });
-    } catch (e, stack) {
-      print(e);
-      print(stack);
-      setState(() {
-        infoText = 'Warning: there was an error retrieving category names. Some'
-        ' of this information may look a little jumbled.';
-      });
-    }
-  }
-
-  void _handleConfirmCheckIn(Record record) async {
+  void _handleConfirmCheckIn(CheckedOutRecord record) async {
     /// TODO: handle submission error
     ///   2) checking in when offline results in a future that never finishes
     ///   (Firebase implementation). This is the reason this asynchronous call
@@ -68,7 +44,25 @@ class CheckInState extends State<CheckIn> {
     });
   }
 
-  void _handleCheckIn(BuildContext context, Record record) async {
+  void _handleCheckInPressed(CheckedOutRecord record) async {
+    if (record.model.fields
+      .where((ModelField mf) => mf.delay)
+      .toList().length > 0) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CheckInForm(
+            record: record
+          )
+        )
+      ).then((dynamic d) {
+        setState(() {
+          _recordsFuture = getRecords();
+        });
+      });
+      return;
+    }
+
     showDialog<ConfirmAction>(
       context: context,
       barrierDismissible: false,
@@ -140,14 +134,18 @@ class CheckInState extends State<CheckIn> {
     );
   }
 
-  Widget _buildCard(Record record) {
+  Widget _buildCard(CheckedOutRecord record) {
     if (record.id == null) {
       throw new RangeError('Record without an ID retrieved. Cannot be rendered.');
     }
 
     List<Widget> propsToDisplay = [];
-    record.properties.forEach((String key, dynamic value) {
-      if (value is String) {
+    List<String> delayedFields = record.model.fields
+      .where((ModelField mf) => mf.delay)
+      .map((ModelField mf) => mf.title)
+      .toList();
+    record.record.properties.forEach((String key, dynamic value) {
+      if (value is String && !delayedFields.contains(key)) {
         propsToDisplay.add(
           Text('$key: $value',
             style: TextStyle(
@@ -158,12 +156,23 @@ class CheckInState extends State<CheckIn> {
       }
     });
     propsToDisplay.add(
-      Text('Checked out at: ${dateTimeToString(record.checkoutTime)}',
+      Text('Checked out at: ${dateTimeToString(record.record.checkoutTime)}',
         style: TextStyle(
           fontSize: cardFontSize
         ),
       )
     );
+    if (delayedFields.length > 0) {
+      propsToDisplay.add(
+        Text(
+          'Upon check-in, you\'ll be asked to fill out: ${delayedFields.join(', ')}.',
+          style: TextStyle(
+            fontSize: cardFontSize,
+            fontWeight: FontWeight.bold
+          ),
+        )
+      );
+    }
 
     return Card(
       child: Container(
@@ -177,11 +186,7 @@ class CheckInState extends State<CheckIn> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '${
-                        categoriesMeta[record.modelId] != null
-                          ? categoriesMeta[record.modelId].title
-                          : record.modelId
-                      } checkout',
+                      '${record.model.title} checkout',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: cardFontSize
@@ -193,7 +198,7 @@ class CheckInState extends State<CheckIn> {
               )
             ),
             RaisedButton(
-              onPressed: () => _handleCheckIn(context, record),
+              onPressed: () => _handleCheckInPressed(record),
               child: Text('Check In',
                 style: TextStyle(
                   fontSize: 20.0
@@ -208,9 +213,9 @@ class CheckInState extends State<CheckIn> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Record>>(
+    return FutureBuilder<List<CheckedOutRecord>>(
       future: _recordsFuture,
-      builder: (BuildContext context, AsyncSnapshot<List<Record>> snapshot) {
+      builder: (BuildContext context, AsyncSnapshot<List<CheckedOutRecord>> snapshot) {
         if (snapshot.hasError) {
           print(snapshot.error);
           return _buildErrorView();
