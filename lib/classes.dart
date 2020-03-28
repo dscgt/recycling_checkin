@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/utils.dart';
 
-enum ModelFieldDataType { string, number }
+enum ModelFieldDataType { string, number, select }
 
 class ModelField {
   final String title;
@@ -95,16 +95,30 @@ class Model {
 
 class Group {
   final List<String> members;
-  final String id;
+  String id;
 
   Group({
     @required this.members,
     @required this.id
   });
 
+  Group.fromMap(Map map)
+    : members = map['members']
+        .map((dynamic) => dynamic['title']).toList().cast<String>(),
+      id = map['id'];
+
   @override
   String toString() {
     return 'Group $id with members $members';
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'members': members.map((String s) => {
+        'title': s
+      })
+    };
   }
 }
 

@@ -9,8 +9,9 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-final String localDbDataCategoriesName = 'dataCategories';
+final String localDbDataModelsName = 'dataCategories';
 final String localDbDataRecordsName = 'dataRecords';
+final String localDbDataGroupsName = 'dataGroups';
 final String recordsCollectionName = 'records';
 final String modelsCollectionName = 'models';
 final String groupsCollectionName = 'groups';
@@ -23,16 +24,16 @@ Future<String> getLocalDbPath() async {
   return join(directory.path, 'recycling_checkout.db');
 }
 
-/// Gets data categories from Cloud Firestore, and use to update local
-/// database's cache of data categories.
-Future<List<Classes.Model>> getCategories() async {
+/// Gets models from Cloud Firestore, and use to update local
+/// database's cache of models.
+Future<List<Classes.Model>> getModels() async {
   return db.collection(modelsCollectionName).getDocuments().then((QuerySnapshot snaps) {
-    /// Handle offline persistence of queried categories, to give us more
+    /// Handle offline persistence of queried models, to give us more
     /// control of error messages, instead of letting Firebase do it.
     if (snaps.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
-    List<Classes.Model> categories = snaps.documents.map((DocumentSnapshot snap) {
+    List<Classes.Model> models = snaps.documents.map((DocumentSnapshot snap) {
       Classes.Model toReturn = Classes.Model.fromMap(snap.data);
 
       /// Finish the Model with snapshot info not present in snap.data
@@ -42,48 +43,110 @@ Future<List<Classes.Model>> getCategories() async {
     }).toList().cast<Classes.Model>();
 
     return Future.wait([
-      updateCachedCategories(categories),
-      Future.value(categories)
+      updateCachedModels(models),
+      Future.value(models)
     ]);
   }).then((List<dynamic> res) {
-    /// Pass categories through to future output.
+    /// Pass models through to future output.
     return res[1];
   });
 }
 
-/// Gets cached categories from local Sembast database. These are the categories
-/// retrieved from the last successful GET of categories from Firestore.
-Future<List<Classes.Model>> getCachedCategories() async {
+Future<List<Classes.Group>> getGroups() async {
+  return db.collection(groupsCollectionName).getDocuments().then((QuerySnapshot snaps) {
+    /// Handle offline persistence of queried groups, to give us more
+    /// control of error messages, instead of letting Firebase do it.
+    if (snaps.metadata.isFromCache) {
+      throw new Exception('No internet connection!');
+    }
+    List<Classes.Group> groups = snaps.documents.map((DocumentSnapshot snap) {
+      Classes.Group toReturn = Classes.Group.fromMap(snap.data);
+
+      /// Finish the Model with snapshot info not present in snap.data
+      toReturn.id = snap.documentID;
+
+      return toReturn;
+    }).toList().cast<Classes.Group>();
+
+    return Future.wait([
+      updateCachedGroups(groups),
+      Future.value(groups)
+    ]);
+  }).then((List<dynamic> res) {
+    /// Pass groups through to future output.
+    return res[1];
+  });
+}
+
+/// Gets cached models from local Sembast database. These are the models
+/// retrieved from the last successful retrieval of models from Firestore.
+Future<List<Classes.Model>> getCachedModels() async {
+  String dbPath = await getLocalDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database localDb = await dbFactory.openDatabase(dbPath);
+  Finder finder = Finder(
+      filter: Filter.isNull('thisFieldShouldNotExist')
+  );
+  StoreRef store = stringMapStoreFactory.store(localDbDataModelsName);
+  return store.find(localDb, finder: finder).then((List<RecordSnapshot> snapshots) {
+    return snapshots.map((RecordSnapshot snap) =>
+        Classes.Model.fromMap(snap.value)
+    ).toList();
+  });
+}
+
+/// Gets cached groups from local Sembast database. These are the groups
+/// retrieved from the last successful retrieval of groups from Firestore.
+Future<List<Classes.Group>> getCachedGroups() async {
   String dbPath = await getLocalDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database localDb = await dbFactory.openDatabase(dbPath);
   Finder finder = Finder(
     filter: Filter.isNull('thisFieldShouldNotExist')
   );
-  StoreRef store = stringMapStoreFactory.store(localDbDataCategoriesName);
+  StoreRef store = stringMapStoreFactory.store(localDbDataGroupsName);
   return store.find(localDb, finder: finder).then((List<RecordSnapshot> snapshots) {
     return snapshots.map((RecordSnapshot snap) =>
-      Classes.Model.fromMap(snap.value)
+      Classes.Group.fromMap(snap.value)
     ).toList();
   });
 }
 
-/// Replaces locally stored data categories with [categories]. Categories
+/// Replaces locally stored data models with [models]. Models
 /// already stored locally will be deleted and replaced completed with
-/// [categories].
-Future<void> updateCachedCategories(List<Classes.Model> categories) async {
+/// [models].
+Future<void> updateCachedModels(List<Classes.Model> models) async {
   String dbPath = await getLocalDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database localDb = await dbFactory.openDatabase(dbPath);
-  StoreRef store = stringMapStoreFactory.store(localDbDataCategoriesName);
+  StoreRef store = stringMapStoreFactory.store(localDbDataModelsName);
 
-  /// Transform [categories] to a format compatible with Sembast.
-  List<Map<String, dynamic>> categoriesToAdd = categories
-    .map((Classes.Model category) => category.toMap())
+  /// Transform [models] to a format compatible with Sembast.
+  List<Map<String, dynamic>> modelsToAdd = models
+    .map((Classes.Model model) => model.toMap())
     .toList();
 
   return store.delete(localDb).then((int numDeleted) {
-    return store.addAll(localDb, categoriesToAdd);
+    return store.addAll(localDb, modelsToAdd);
+  });
+}
+
+/// Replaces locally stored data groups with [groups]. Groups
+/// already stored locally will be deleted and replaced completed with
+/// [groups].
+Future<void> updateCachedGroups(List<Classes.Group> groups) async {
+  String dbPath = await getLocalDbPath();
+  DatabaseFactory dbFactory = databaseFactoryIo;
+  Database localDb = await dbFactory.openDatabase(dbPath);
+  StoreRef store = stringMapStoreFactory.store(localDbDataGroupsName);
+
+  /// Transform [groups] to a format compatible with Sembast.
+  List<Map<String, dynamic>> groupsToAdd = groups
+    .map((Classes.Group group) => group.toMap())
+    .toList();
+
+  return store.delete(localDb).then((int numDeleted) {
+    return store.addAll(localDb, groupsToAdd);
   });
 }
 

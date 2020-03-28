@@ -16,17 +16,23 @@ class CheckOutState extends State<CheckOut> {
 
   /// The models(ex. Vehicle, Fuel Card) available to the user for
   /// selection.
-  List<Model> availableTypes = [];
+  List<Model> models = [];
   /// The model selected by the user.
   Model selectedModel;
 
   /// A record of model title -> model field title (ex. Vehicle #, Name))
-  /// -> ModelField. For fast lookups about data category's properties'
-  /// metadata.
-  Map<String, Map<String, ModelField>> checkoutPropertiesMeta = {};
+  /// -> ModelField. For fast lookups about models' properties'
+  /// metadata. Also a master list of all fields.
+  Map<String, Map<String, ModelField>> fieldsMeta = {};
+  /// A record of groupId -> Group. For fast lookups about groups.
+  Map<String, Group> groupsMeta = {};
 
-  /// Checkout details entered by the user. Defaults to all empty inputs.
-  Map<String, Map<String, TextEditingController>> checkoutProperties = {};
+  /// Field values entered by the user. Defaults to all empty inputs. For fields
+  /// that need a textbox and are not delayed.
+  Map<String, Map<String, TextEditingController>> fields = {};
+  /// Field values entered by the user, for fields that need a dropdown and are
+  /// not delayed.
+  Map<String, Map<String, String>> fieldsForDropdown = {};
 
   /// Form key for the dynamically generated form. May be applied to different
   /// forms.
@@ -38,23 +44,26 @@ class CheckOutState extends State<CheckOut> {
   @override
   void initState() {
     super.initState();
-    attemptGetCategories();
+    attemptGetModelsAndGroups();
   }
 
-  attemptGetCategories() async {
-    List<Model> categories;
+  attemptGetModelsAndGroups() async {
+    List<Model> models;
+    List<Group> groups;
     try {
-      /// By now, we have successfully retrieved categories from cloud DB.
-      categories = await getCategories();
-      initCategoriesState(categories);
+      /// By now, we have successfully retrieved models from cloud DB.
+      models = await getModels();
+      groups = await getGroups();
+      initModelsState(models, groups);
     } catch (e, stack) {
       print(e);
       print(stack);
       try {
-        categories = await getCachedCategories();
-        /// By now, getting categories from cloud DB failed, so we successfully
-        /// retrieved categories from local cache.
-        initCategoriesState(categories);
+        models = await getCachedModels();
+        groups = await getCachedGroups();
+        /// By now, getting models from cloud DB failed, so we successfully
+        /// retrieved models from local cache.
+        initModelsState(models, groups);
         setState(() {
           loading = false;
           infoText = 'Warning: There was a problem getting the most recent checkout options. The options you see may be outdated.';
@@ -62,8 +71,8 @@ class CheckOutState extends State<CheckOut> {
       } catch (e, stack) {
         print(e);
         print(stack);
-        /// By now, getting categories from cloud DB failed, and getting
-        /// categories from local cache failed as well.
+        /// By now, getting models from cloud DB failed, and getting
+        /// models from local cache failed as well.
         setState(() {
           loading = false;
           infoText = 'ERROR: There was an error: ${e.toString()}';
@@ -72,40 +81,52 @@ class CheckOutState extends State<CheckOut> {
     }
   }
 
-  void initCategoriesState(List<Model> categories) {
-    // build state objects from retrieved categories.
-    Map<String, Map<String, ModelField>> theseAvailablePropertiesMeta = {};
-    categories.forEach((Model dc) {
-      theseAvailablePropertiesMeta[dc.title] = {};
+  void initModelsState(List<Model> theseModels, List<Group> groups) {
+    // build state objects from retrieved theseModels.
+    Map<String, Map<String, ModelField>> fieldsMetaToSet = {};
+    theseModels.forEach((Model dc) {
+      fieldsMetaToSet[dc.title] = {};
       dc.fields.forEach((ModelField dp) {
-        theseAvailablePropertiesMeta[dc.title][dp.title] = dp;
+        fieldsMetaToSet[dc.title][dp.title] = dp;
       });
     });
-    Map<String, Map<String, TextEditingController>> theseAvailableProperties = {};
-    categories.forEach((Model dc) {
-      theseAvailableProperties[dc.title] = {};
+    Map<String, Group> groupsMetaToSet = {};
+    groups.forEach((Group g) {
+      groupsMetaToSet[g.id] = g;
+    });
+    Map<String, Map<String, TextEditingController>> fieldsToSet = {};
+    Map<String, Map<String, String>> fieldsForDropdownToSet = {};
+    theseModels.forEach((Model dc) {
+      fieldsToSet[dc.title] = {};
+      fieldsForDropdownToSet[dc.title] = {};
       dc.fields.forEach((ModelField dp) {
-        TextEditingController thisController = TextEditingController();
-        theseAvailableProperties[dc.title][dp.title] = thisController;
+        // skip delay fields
+        if (dp.delay) {
+          return;
+        }
+        if (dp.type != ModelFieldDataType.select) {
+          TextEditingController thisController = TextEditingController();
+          fieldsToSet[dc.title][dp.title] = thisController;
+        }
       });
     });
 
-    // Still have to setState inside asynchronous code to trigger UI rebuild,
-    // even within initState()
     setState(() {
-      availableTypes = categories;
-      checkoutPropertiesMeta = theseAvailablePropertiesMeta;
-      selectedModel = availableTypes.length > 0
-          ? availableTypes[0]
+      models = theseModels;
+      fieldsMeta = fieldsMetaToSet;
+      groupsMeta = groupsMetaToSet;
+      fieldsForDropdown = fieldsForDropdownToSet;
+      selectedModel = models.length > 0
+          ? models[0]
           : null;
-      checkoutProperties = theseAvailableProperties;
+      fields = fieldsToSet;
       loading = false;
     });
   }
 
   void dispose() {
     // Dispose of all TextEditingController's.
-    checkoutProperties.forEach((String key, Map<String, TextEditingController> tec) {
+    fields.forEach((String key, Map<String, TextEditingController> tec) {
       tec.forEach((String key2, TextEditingController tec2) {
         tec2.dispose();
       });
@@ -116,8 +137,11 @@ class CheckOutState extends State<CheckOut> {
 
   void clearForm() {
     setState(() {
-      checkoutProperties[selectedModel.title].keys.forEach((String propertyTitle) {
-        checkoutProperties[selectedModel.title][propertyTitle].clear();
+      fields[selectedModel.title].keys.forEach((String propertyTitle) {
+        fields[selectedModel.title][propertyTitle].clear();
+      });
+      fieldsForDropdown[selectedModel.title].keys.forEach((String propertyTitle) {
+        fieldsForDropdown[selectedModel.title][propertyTitle] = null;
       });
     });
   }
@@ -128,8 +152,11 @@ class CheckOutState extends State<CheckOut> {
     }
 
     Map<String, dynamic> theseProperties = {};
-    checkoutProperties[selectedModel.title].forEach((String propertyName, TextEditingController te) {
+    fields[selectedModel.title].forEach((String propertyName, TextEditingController te) {
       theseProperties[propertyName] = te.text;
+    });
+    fieldsForDropdown[selectedModel.title].forEach((String propertyName, String value) {
+      theseProperties[propertyName] = value;
     });
     Record thisRecord = Record(
       modelId: selectedModel.id,
@@ -163,7 +190,7 @@ class CheckOutState extends State<CheckOut> {
       )
     );
 
-    if (availableTypes.length == 0) {
+    if (models.length == 0) {
       return Container(
         padding: EdgeInsets.only(left: 75.0, right: 75.0),
         child: Column(
@@ -186,32 +213,61 @@ class CheckOutState extends State<CheckOut> {
 
     List<Widget> formInputs = [];
     List<String> delayedFields = [];
-    checkoutProperties[selectedModel.title].forEach((String propertyTitle, TextEditingController te) {
-      if (checkoutPropertiesMeta[selectedModel.title][propertyTitle].delay) {
-        // Skip if this is a field meant to be completed later.
-        delayedFields.add(propertyTitle);
+    fieldsMeta[selectedModel.title].keys.forEach((String propertyTitle) {
+      ModelField thisFieldMeta = fieldsMeta[selectedModel.title][propertyTitle];
+      // collect delay fields for display to user and skip their building
+      if (thisFieldMeta.delay) {
+        delayedFields.add(thisFieldMeta.title);
         return;
       }
-      TextInputType thisKeyboardType = TextInputType.text;
-      if (checkoutPropertiesMeta[selectedModel.title][propertyTitle].type == ModelFieldDataType.number) {
-        thisKeyboardType = TextInputType.number;
+
+      if (thisFieldMeta.type == ModelFieldDataType.select) {
+        formInputs.add(
+          DropdownButtonFormField<String>(
+            validator: (String value) {
+              if (value == null && !thisFieldMeta.optional) {
+                return 'Please enter a $propertyTitle.';
+              }
+              return null;
+            },
+            value: fieldsForDropdown[selectedModel.title][propertyTitle],
+            hint: Text(propertyTitle),
+            icon: Icon(Icons.arrow_drop_down),
+            onChanged: (String newValue) {
+              setState(() {
+                fieldsForDropdown[selectedModel.title][propertyTitle] = newValue;
+              });
+            },
+            items: groupsMeta[thisFieldMeta.groupId].members.map((String member) =>
+              DropdownMenuItem<String>(
+                value: member,
+                child: Text(member)
+              )
+            ).toList(),
+          )
+        );
+      } else {
+        TextInputType thisKeyboardType = TextInputType.text;
+        if (thisFieldMeta.type == ModelFieldDataType.number) {
+          thisKeyboardType = TextInputType.number;
+        }
+        bool isOptional = thisFieldMeta.optional;
+        formInputs.add(
+          TextFormField(
+            controller: fields[selectedModel.title][propertyTitle],
+            validator: (value) {
+              if (value.isEmpty && !isOptional) {
+                return 'Please enter a $propertyTitle.';
+              }
+              return null;
+            },
+            keyboardType: thisKeyboardType,
+            decoration: InputDecoration(
+              labelText: '$propertyTitle'
+            ),
+          )
+        );
       }
-      bool isOptional = checkoutPropertiesMeta[selectedModel.title][propertyTitle].optional;
-      formInputs.add(
-        TextFormField(
-          controller: checkoutProperties[selectedModel.title][propertyTitle],
-          validator: (value) {
-            if (value.isEmpty && !isOptional) {
-              return 'Please enter a $propertyTitle.';
-            }
-            return null;
-          },
-          keyboardType: thisKeyboardType,
-          decoration: InputDecoration(
-            labelText: '$propertyTitle'
-          ),
-        )
-      );
     });
 
     return Container(
@@ -228,7 +284,7 @@ class CheckOutState extends State<CheckOut> {
                   selectedModel = newValue;
                 });
               },
-              items: availableTypes.map<DropdownMenuItem<Model>>((Model value) => DropdownMenuItem<Model>(
+              items: models.map<DropdownMenuItem<Model>>((Model value) => DropdownMenuItem<Model>(
                   value: value,
                   child: Text(value.title),
                 )
