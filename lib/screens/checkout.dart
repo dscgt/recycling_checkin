@@ -163,17 +163,27 @@ class CheckOutState extends State<CheckOut> {
       modelTitle: selectedModel.title,
       properties: theseProperties
     );
-    /// TODO: Handle submisson errors
-    await checkout(CheckedOutRecord(
-      record: thisRecord,
-      model: selectedModel
-    ));
-    Scaffold.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Checkout submitted')
-      )
-    );
-    clearForm();
+    try {
+      await checkout(CheckedOutRecord(
+        record: thisRecord,
+        model: selectedModel
+      ));
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Checkout submitted')
+        )
+      );
+      clearForm();
+    } catch (e, st) {
+      print('Checkout submission error happened');
+      print(e);
+      print(st);
+      Scaffold.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Something went wrong. Try again after a bit. Write your checkout down and contact your manager if the problem keeps happening.')
+        )
+      );
+    }
   }
 
   @override

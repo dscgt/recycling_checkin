@@ -27,24 +27,8 @@ class CheckInState extends State<CheckIn> {
     _recordsFuture = getRecords();
   }
 
-  void _handleConfirmCheckIn(CheckedOutRecord record) async {
-    /// TODO: handle submission error
-    ///   2) checking in when offline results in a future that never finishes
-    ///   (Firebase implementation). This is the reason this asynchronous call
-    ///   is not handled like it should. Could lead to unexpected behavior
-    ///   down the line.
-    await checkin(record);
-
-    Navigator.of(context).pop(ConfirmAction.CONFIRM);
-
-    /// After a check-in, refresh record data by restarting FutureBuilder's
-    /// future.
-    setState(() {
-      _recordsFuture = getRecords();
-    });
-  }
-
   void _handleCheckInPressed(CheckedOutRecord record) async {
+    /// Redirect user to a check-in form if additional input is needed
     if (record.model.fields
       .where((ModelField mf) => mf.delay)
       .toList().length > 0) {
@@ -68,10 +52,22 @@ class CheckInState extends State<CheckIn> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         bool loadingAfterButtonPress = false;
+        String infoText = '';
         return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
+          builder: (BuildContext context, StateSetter setInnerState) {
             return AlertDialog(
-              title: const Text('Are you sure you want to check this in?'),
+              title: const Text(
+                'Are you sure you want to check this in?',
+              ),
+              content: infoText.length > 0
+                ? Container(
+                    child: Text(
+                      infoText,
+                      style: TextStyle(
+                        color: Colors.red,
+                      ),
+                    )                  )
+                : null ,
               actions: <Widget>[
                 FlatButton(
                   onPressed: loadingAfterButtonPress
@@ -84,11 +80,25 @@ class CheckInState extends State<CheckIn> {
                 FlatButton(
                   onPressed: loadingAfterButtonPress
                     ? null
-                    : () {
-                        setState(() {
+                    : () async {
+                        setInnerState(() {
                           loadingAfterButtonPress = true;
                         });
-                        _handleConfirmCheckIn(record);
+                        try {
+                          await checkin(record);
+                          setState(() {
+                            _recordsFuture = getRecords();
+                          });
+                          Navigator.of(context).pop(ConfirmAction.CONFIRM);
+                        } catch (e, st) {
+                          print('Check-in error');
+                          print(e);
+                          print(st);
+                          setInnerState(() {
+                            infoText = 'Something went wrong. Hit \'CONFIRM\' to try again after a bit. Write your checkout down and contact your manager if the problem keeps happening.';
+                            loadingAfterButtonPress = false;
+                          });
+                        }
                       },
                   child: const Text('CONFIRM'),
                 ),
