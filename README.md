@@ -1,6 +1,10 @@
 # recycling_checkin
 
-Check-in and check-out app for Georgia Tech&#x27;s Office of Solid Waste Management &amp; Recycling.
+Daily check-out/check-in for recycling department crewmembers needing GT property.
+
+This is part of a suite of apps made for Georgia Tech's [OSWM&R](http://www.recycle.gatech.edu/), which also includes:
+* [route-recorder](https://github.com/dscgt/route_recorder): Buddy app for recycling department crewmembers working recycling routes
+* [recycling-website](https://github.com/dscgt/recycling_website): Management and data viewing portal for recycling department administrators
 
 ## Running this code
 
