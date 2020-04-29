@@ -18,5 +18,7 @@ Currently, for development, this code can be run in Android Studio.
     1. For further guidance, see [here](https://firebase.google.com/docs/flutter/setup?platform=android).
 1. Run the app on a physical device or an emulator; see [here](https://developer.android.com/training/basics/firstapp/running-app) for more details.
 
+The app isn't very interesting without checkout options, which require checkout option models to be added to the database. See `models/model.json` for these models' structure, and [here](https://github.com/dscgt/recycling_checkin/blob/master/models/README.md) for more info.
+
 ## About
 Made by the [Developer Student Club at Georgia Tech](https://dsc.gt/). 
