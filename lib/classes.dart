@@ -22,15 +22,16 @@ class ModelField {
 
   /// Converts a map to a ModelField, using map key-value pairs as
   /// ModelField fields. In the case of null values, optional will default
-  /// to false, delay will default to false, and groupId maintains null. title
-  /// and type cannot be null and will likely error.
+  /// to false, delay will default to false, and groupId maintains null, while
+  /// title and type cannot be null and will likely error. type accepts strings
+  /// or ModelFieldDataType. groupId accepts DocumentReference or strings.
   ModelField.fromMap(Map map)
     : title = map['title'],
       optional = map['optional'] ?? false,
       delay = map['delay'] ?? false,
-      type = stringToModelFieldDataType(map['type']),
-      /// Handle groupId being both a DocumentReference when retrieved
-      /// from Firestore, and a String when retrieved from local storage
+      type = map['type'] is ModelFieldDataType
+        ? map['type']
+        : stringToModelFieldDataType(map['type']),
       groupId = map['groupId'] is DocumentReference
         ? map['groupId'].documentID
         : map['groupId'];
@@ -45,7 +46,7 @@ class ModelField {
       'title': title,
       'optional': optional,
       'delay': delay,
-      'type': modelFieldDataTypeToString(type),
+      'type': type,
       'groupId': groupId,
     };
   }

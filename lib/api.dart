@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:recycling_checkin/classes.dart' as Classes;
+import 'package:recycling_checkin/utils.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sembast/sembast.dart';
@@ -123,8 +124,14 @@ Future<void> updateCachedModels(List<Classes.Model> models) async {
 
   /// Transform [models] to a format compatible with Sembast.
   List<Map<String, dynamic>> modelsToAdd = models
-    .map((Classes.Model model) => model.toMap())
-    .toList();
+    .map((Classes.Model model) {
+      Map<String, dynamic> toReturn = model.toMap();
+      // turn enums into strings
+      toReturn['fields'].forEach((Map modelFields) {
+        modelFields['type'] = modelFieldDataTypeToString(modelFields['type']);
+      });
+      return toReturn;
+    }).toList();
 
   return store.delete(localDb).then((int numDeleted) {
     return store.addAll(localDb, modelsToAdd);
@@ -209,6 +216,11 @@ Future<dynamic> checkout(Classes.CheckedOutRecord record) async {
   if (toAdd['record']['checkoutTime'] == null) {
     toAdd['record']['checkoutTime'] = (DateTime.now().millisecondsSinceEpoch / 1000).round();
   }
+
+  // replace enums with strings
+  toAdd['model']['fields'].forEach((Map modelFields) {
+    modelFields['type'] = modelFieldDataTypeToString(modelFields['type']);
+  });
 
   var key = await store.add(localDb, toAdd);
   return key;
