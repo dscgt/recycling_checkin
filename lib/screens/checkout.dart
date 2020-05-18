@@ -225,13 +225,17 @@ class CheckOutState extends State<CheckOut> {
     List<String> delayedFields = [];
     fieldsMeta[selectedModel.title].keys.forEach((String propertyTitle) {
       ModelField thisFieldMeta = fieldsMeta[selectedModel.title][propertyTitle];
-      // collect delay fields for display to user and skip their building
+      // Collect delay fields for informational display to user and skip
+      // building their full inputs.
       if (thisFieldMeta.delay) {
         delayedFields.add(thisFieldMeta.title);
         return;
       }
 
-      if (thisFieldMeta.type == ModelFieldDataType.select) {
+      // Handle for fields requiring a dropdown, but only if field uses a
+      // dropdown group that exists.
+      if (thisFieldMeta.type == ModelFieldDataType.select
+          && groupsMeta[thisFieldMeta.groupId] != null) {
         formInputs.add(
           DropdownButtonFormField<String>(
             validator: (String value) {
