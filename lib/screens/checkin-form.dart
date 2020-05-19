@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/classes.dart';
+import 'package:recycling_checkin/screens/loading.dart';
 
 enum ConfirmAction { CANCEL, CONFIRM }
 
@@ -25,19 +26,72 @@ class CheckInFormState extends State<CheckInForm> {
   /// A map of ModelField title to controller. Contains controllers for all
   /// ModelField's to be submitted by this widget.
   Map<String, TextEditingController> controllers = {};
+  /// Field values entered by the user, for fields that need a dropdown
+  Map<String, String> fieldsForDropdown = {};
+  /// A record of groupId -> Group. For fast lookups about groups.
+  Map<String, Group> groupsMeta = {};
+  bool loading = true;
+  String infoText = '';
 
   @override
   void initState() {
-    widget.record.model.fields
-      .where((ModelField mf) => mf.delay)
-      .forEach((ModelField mf) {
-        controllers[mf.title] = TextEditingController();
-      });
+    attemptGetGroups();
+
     super.initState();
   }
 
   void close() {
     Navigator.pop(context);
+  }
+
+  void attemptGetGroups() async {
+    List<Group> groups;
+    try {
+      groups = await getGroups();
+      initControllersAndMeta(groups);
+    } catch (e, stack) {
+      print(e);
+      print(stack);
+      try {
+        groups = await getCachedGroups();
+        // By now, getting groups from cloud DB failed, so we successfully
+        // retrieved groups from local cache.
+        initControllersAndMeta(groups);
+        setState(() {
+          infoText = 'Warning: There was a problem getting the most recent options. The options you see may be outdated.';
+        });
+      } catch (e, stack) {
+        print(e);
+        print(stack);
+        // By now, getting models from cloud DB failed, and getting
+        // models from local cache failed as well.
+        initControllersAndMeta(null);
+      }
+    }
+
+  }
+
+  void initControllersAndMeta(List<Group> groups) {
+    Map<String, TextEditingController> controllersToSet = {};
+    Map<String, Group> groupsMetaToSet = {};
+    widget.record.model.fields
+      .where((ModelField mf) => mf.delay)
+      .forEach((ModelField mf) {
+        if (mf.type != ModelFieldDataType.select) {
+          controllersToSet[mf.title] = TextEditingController();
+        }
+      });
+    if (groups != null) {
+      groups.forEach((Group group) {
+        groupsMetaToSet[group.id] = group;
+      });
+    }
+
+    setState(() {
+      controllers = controllersToSet;
+      groupsMeta = groupsMetaToSet;
+      loading = false;
+    });
   }
 
   Future<void> _handleConfirmCheckIn(BuildContext context) async {
@@ -49,6 +103,9 @@ class CheckInFormState extends State<CheckInForm> {
     );
     toSubmit.record.properties.addAll(controllers.map((String s, TextEditingController tec) =>
       MapEntry(s, tec.text)
+    ));
+    toSubmit.record.properties.addAll(fieldsForDropdown.map((String s1, String s2) =>
+      MapEntry(s1, s2)
     ));
     await checkin(toSubmit);
   }
@@ -147,26 +204,58 @@ class CheckInFormState extends State<CheckInForm> {
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return Loading();
+    }
+
     List<Widget> formInputs = widget.record.model.fields
       .where((ModelField mf) => mf.delay)
       .map((ModelField mf) {
-        TextInputType thisKeyboardType = TextInputType.text;
-        if (mf.type == ModelFieldDataType.number) {
-          thisKeyboardType = TextInputType.number;
+        // Handle fields requiring a dropdown, but only if field uses a
+        // dropdown group that exists.
+        if (mf.type == ModelFieldDataType.select
+            && groupsMeta[mf.groupId] != null) {
+          return DropdownButtonFormField<String>(
+            validator: (String value) {
+              if (value == null && !mf.optional) {
+                return 'Please enter a ${mf.title}.';
+              }
+              return null;
+            },
+            value: fieldsForDropdown[mf.title],
+            hint: Text(mf.title),
+            icon: Icon(Icons.arrow_drop_down),
+            onChanged: (String newValue) {
+              setState(() {
+                fieldsForDropdown[mf.title] = newValue;
+              });
+            },
+            items: groupsMeta[mf.groupId].members.map((String member) =>
+              DropdownMenuItem<String>(
+                value: member,
+                child: Text(member)
+              )
+            ).toList(),
+          );
+        } else {
+          TextInputType thisKeyboardType = TextInputType.text;
+          if (mf.type == ModelFieldDataType.number) {
+            thisKeyboardType = TextInputType.number;
+          }
+          return TextFormField(
+            controller: controllers[mf.title],
+            validator: (value) {
+              if (value.isEmpty && !mf.optional) {
+                return 'Please enter a ${mf.title}';
+              }
+              return null;
+            },
+            keyboardType: thisKeyboardType,
+            decoration: InputDecoration(
+                labelText: '${mf.title}${mf.optional ? ' (optional)' : ''}'
+            ),
+          );
         }
-        return TextFormField(
-          controller: controllers[mf.title],
-          validator: (value) {
-            if (value.isEmpty && !mf.optional) {
-              return 'Please enter a ${mf.title}';
-            }
-            return null;
-          },
-          keyboardType: thisKeyboardType,
-          decoration: InputDecoration(
-            labelText: '${mf.title}${mf.optional ? ' (optional)' : ''}'
-          ),
-        );
       })
       .toList();
 
@@ -181,6 +270,13 @@ class CheckInFormState extends State<CheckInForm> {
           key: _formKey,
           child: Column(
             children: <Widget>[
+              Text(
+                infoText,
+                style: TextStyle(
+                  fontSize: 16.0,
+                  color: Colors.red
+                )
+              ),
               ...formInputs,
               Padding(padding: EdgeInsets.only(top: 10)),
               Row(

@@ -55,15 +55,15 @@ Future<List<Classes.Model>> getModels() async {
 
 Future<List<Classes.Group>> getGroups() async {
   return db.collection(groupsCollectionName).getDocuments().then((QuerySnapshot snaps) {
-    /// Handle offline persistence of queried groups, to give us more
-    /// control of error messages, instead of letting Firebase do it.
+    // Handle offline persistence of queried groups, to give us more
+    // control of error messages, instead of letting Firebase do it.
     if (snaps.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
     List<Classes.Group> groups = snaps.documents.map((DocumentSnapshot snap) {
       Classes.Group toReturn = Classes.Group.fromMap(snap.data);
 
-      /// Finish the Model with snapshot info not present in snap.data
+      /// Finish the Group with snapshot info not present in snap.data
       toReturn.id = snap.documentID;
 
       return toReturn;
@@ -76,6 +76,22 @@ Future<List<Classes.Group>> getGroups() async {
   }).then((List<dynamic> res) {
     /// Pass groups through to future output.
     return res[1];
+  });
+}
+
+Future<Classes.Group> getGroup(String groupId) async {
+  return db.collection(groupsCollectionName).document(groupId).get().then((DocumentSnapshot doc) {
+    // Handle offline persistence to give us more
+    // control of error messages, instead of letting Firebase do it.
+    if (doc.metadata.isFromCache) {
+      throw new Exception('No internet connection!');
+    }
+    Classes.Group toReturn = Classes.Group.fromMap(doc.data);
+
+    // Finish the Group with snapshot info not present in snap.data
+    toReturn.id = doc.documentID;
+
+    return toReturn;
   });
 }
 
