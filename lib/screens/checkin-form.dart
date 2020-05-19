@@ -74,18 +74,18 @@ class CheckInFormState extends State<CheckInForm> {
   void initControllersAndMeta(List<Group> groups) {
     Map<String, TextEditingController> controllersToSet = {};
     Map<String, Group> groupsMetaToSet = {};
-    widget.record.model.fields
-      .where((ModelField mf) => mf.delay)
-      .forEach((ModelField mf) {
-        if (mf.type != ModelFieldDataType.select) {
-          controllersToSet[mf.title] = TextEditingController();
-        }
-      });
     if (groups != null) {
       groups.forEach((Group group) {
         groupsMetaToSet[group.id] = group;
       });
     }
+    widget.record.model.fields
+      .where((ModelField mf) => mf.delay)
+      .forEach((ModelField mf) {
+        if (!(mf.type == ModelFieldDataType.select && groupsMetaToSet[mf.groupId] != null)) {
+          controllersToSet[mf.title] = TextEditingController();
+        }
+      });
 
     setState(() {
       controllers = controllersToSet;

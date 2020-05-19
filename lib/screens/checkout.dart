@@ -104,7 +104,7 @@ class CheckOutState extends State<CheckOut> {
         if (dp.delay) {
           return;
         }
-        if (dp.type != ModelFieldDataType.select) {
+        if (!(dp.type == ModelFieldDataType.select && groupsMetaToSet[dp.groupId] != null)) {
           TextEditingController thisController = TextEditingController();
           fieldsToSet[dc.title][dp.title] = thisController;
         }
