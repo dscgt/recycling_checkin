@@ -192,8 +192,10 @@ Future<List<Classes.CheckedOutRecord>> getRecords() async {
 }
 
 /// Checks in a [record]. Deletes it from local cache and submits to Firebase.
-/// Sets the check-in time of the record to the current time.
-Future<dynamic> checkin(Classes.CheckedOutRecord record) async {
+/// Sets the check-in time of the record to the current time. Returns true
+/// if [record] is successfully checked in, and false if [record] is being
+/// queued due to offline write.
+Future<bool> checkin(Classes.CheckedOutRecord record) async {
   String dbPath = await getLocalDbPath();
   DatabaseFactory dbFactory = databaseFactoryIo;
   Database localDb = await dbFactory.openDatabase(dbPath);
@@ -204,19 +206,16 @@ Future<dynamic> checkin(Classes.CheckedOutRecord record) async {
   toAdd.remove('id');
   toAdd['checkinTime'] = DateTime.now();
 
-  return Future.wait([
-    // delete from local cache
-    store.record(record.id).delete(localDb),
-    // submit to Firebase
-    Future.any([
-      /// TODO: Firebase writes when offline never resolve, even though they
-      /// do (usually) sync properly when online. This results in a future
-      /// that never resolves, thus, this function assumes a successful
-      /// creation upon a timeout of 5 seconds. This is a dangerous assumption
-      /// to make; handle this better.
-      Future.delayed(Duration(seconds: 5)).then((onValue) => null),
-      db.collection(recordsCollectionName).add(toAdd)
-    ])
+  // delete from local cache
+  await store.record(record.id).delete(localDb);
+
+  return Future.any([
+    db.collection(recordsCollectionName).add(toAdd)
+      .then((onValue) => true),
+    // TODO: Firebase writes will not resolve if offline until network
+    // connection is restored. To handle this, assume offline
+    // creation upon a timeout of 5 seconds.
+    Future.delayed(Duration(seconds: 5)).then((onValue) => false),
   ]);
 }
 
