@@ -13,9 +13,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 final String localDbDataModelsName = 'dataCategories';
 final String localDbDataRecordsName = 'dataRecords';
 final String localDbDataGroupsName = 'dataGroups';
-final String recordsCollectionName = 'records';
-final String modelsCollectionName = 'models';
-final String groupsCollectionName = 'groups';
+
+final String recordsCollectionName = 'checkin_records';
+final String modelsCollectionName = 'checkin_models';
+final String groupsCollectionName = 'checkin_groups';
 final Firestore db = Firestore.instance;
 
 /// Gets the path on local filesystem that will be used to reference local
