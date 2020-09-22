@@ -144,6 +144,12 @@ class CheckOutState extends State<CheckOut> {
         fieldsForDropdown[selectedModel.title][propertyTitle] = null;
       });
     });
+
+    // dismisses keyboard
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus) {
+      currentFocus.unfocus();
+    }
   }
 
   _handleSubmitRecord() async {
