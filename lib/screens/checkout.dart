@@ -137,9 +137,12 @@ class CheckOutState extends State<CheckOut> {
 
   void clearForm() {
     setState(() {
+      // clear non-dropdown fields
       fields[selectedModel.title].keys.forEach((String propertyTitle) {
         fields[selectedModel.title][propertyTitle].clear();
       });
+
+      // clear dropdown fields
       fieldsForDropdown[selectedModel.title].keys.forEach((String propertyTitle) {
         fieldsForDropdown[selectedModel.title][propertyTitle] = null;
       });
