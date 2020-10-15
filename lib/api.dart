@@ -10,6 +10,8 @@ import 'package:sembast/sembast.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+final FirebaseFirestore db = FirebaseFirestore.instance;
+
 final String localDbDataModelsName = 'dataCategories';
 final String localDbDataRecordsName = 'dataRecords';
 final String localDbDataGroupsName = 'dataGroups';
@@ -17,7 +19,6 @@ final String localDbDataGroupsName = 'dataGroups';
 final String recordsCollectionName = 'checkin_records';
 final String modelsCollectionName = 'checkin_models';
 final String groupsCollectionName = 'checkin_groups';
-final Firestore db = Firestore.instance;
 
 /// Gets the path on local filesystem that will be used to reference local
 /// storage for Sembast.
@@ -29,17 +30,17 @@ Future<String> getLocalDbPath() async {
 /// Gets models from Cloud Firestore, and use to update local
 /// database's cache of models.
 Future<List<Classes.Model>> getModels() async {
-  return db.collection(modelsCollectionName).getDocuments().then((QuerySnapshot snaps) {
+  return db.collection(modelsCollectionName).get().then((QuerySnapshot snaps) {
     /// Handle offline persistence of queried models, to give us more
     /// control of error messages, instead of letting Firebase do it.
     if (snaps.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
-    List<Classes.Model> models = snaps.documents.map((DocumentSnapshot snap) {
-      Classes.Model toReturn = Classes.Model.fromMap(snap.data);
+    List<Classes.Model> models = snaps.docs.map((DocumentSnapshot snap) {
+      Classes.Model toReturn = Classes.Model.fromMap(snap.data());
 
       /// Finish the Model with snapshot info not present in snap.data
-      toReturn.id = snap.documentID;
+      toReturn.id = snap.id;
 
       return toReturn;
     }).toList().cast<Classes.Model>();
@@ -55,17 +56,17 @@ Future<List<Classes.Model>> getModels() async {
 }
 
 Future<List<Classes.Group>> getGroups() async {
-  return db.collection(groupsCollectionName).getDocuments().then((QuerySnapshot snaps) {
+  return db.collection(groupsCollectionName).get().then((QuerySnapshot snaps) {
     // Handle offline persistence of queried groups, to give us more
     // control of error messages, instead of letting Firebase do it.
     if (snaps.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
-    List<Classes.Group> groups = snaps.documents.map((DocumentSnapshot snap) {
-      Classes.Group toReturn = Classes.Group.fromMap(snap.data);
+    List<Classes.Group> groups = snaps.docs.map((DocumentSnapshot snap) {
+      Classes.Group toReturn = Classes.Group.fromMap(snap.data());
 
       /// Finish the Group with snapshot info not present in snap.data
-      toReturn.id = snap.documentID;
+      toReturn.id = snap.id;
 
       return toReturn;
     }).toList().cast<Classes.Group>();
@@ -81,16 +82,16 @@ Future<List<Classes.Group>> getGroups() async {
 }
 
 Future<Classes.Group> getGroup(String groupId) async {
-  return db.collection(groupsCollectionName).document(groupId).get().then((DocumentSnapshot doc) {
+  return db.collection(groupsCollectionName).doc(groupId).get().then((DocumentSnapshot doc) {
     // Handle offline persistence to give us more
     // control of error messages, instead of letting Firebase do it.
     if (doc.metadata.isFromCache) {
       throw new Exception('No internet connection!');
     }
-    Classes.Group toReturn = Classes.Group.fromMap(doc.data);
+    Classes.Group toReturn = Classes.Group.fromMap(doc.data());
 
     // Finish the Group with snapshot info not present in snap.data
-    toReturn.id = doc.documentID;
+    toReturn.id = doc.id;
 
     return toReturn;
   });

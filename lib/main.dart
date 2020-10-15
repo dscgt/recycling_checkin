@@ -6,9 +6,11 @@
 // local data storage:
 // https://flutter.dev/docs/cookbook/persistence/sqlite
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:recycling_checkin/screens/checkin.dart';
 import 'package:recycling_checkin/screens/checkout.dart';
+import 'package:recycling_checkin/screens/loading.dart';
 
 void main() {
   runApp(App());
@@ -44,6 +46,10 @@ class _MainState extends State<Main> {
   /// The ID of the screen to display. 0 is checkout, 1 is checkin.
   int _view = 0;
 
+  /// From https://firebase.flutter.dev/docs/overview/#initializing-flutterfire/
+  /// FlutterFire should be initialized before anything else in the app
+  final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp();
+
   _handleTapNavigation(int index) {
     setState(() {
       _view = index;
@@ -66,7 +72,28 @@ class _MainState extends State<Main> {
       appBar: AppBar(
         title: Text(appBarText),
       ),
-      body: toDisplay,
+      // wait for Firebase initialization before building anything else in the app
+      body: FutureBuilder(
+        future: _firebaseInitialization,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Text('ERROR: There was an error: ${snapshot.error.toString()}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 24.0
+              ),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.done) {
+            return toDisplay;
+          }
+
+          // if we get to this line, connection state has not finished AND no
+          // errors have occurred, so we are still loading
+          return Loading();
+        }
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
