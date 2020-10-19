@@ -118,7 +118,7 @@ class Group {
       'id': id,
       'members': members.map((String s) => {
         'title': s
-      })
+      }).toList()
     };
   }
 }
