@@ -227,6 +227,7 @@ class CheckInState extends State<CheckIn> {
       future: _recordsFuture,
       builder: (BuildContext context, AsyncSnapshot<List<CheckedOutRecord>> snapshot) {
         if (snapshot.hasError) {
+          print('Checkin build error');
           print(snapshot.error);
           return _buildErrorView();
         } else if (snapshot.hasData) {

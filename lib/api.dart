@@ -20,22 +20,14 @@ final String groupsCollectionName = 'checkin_groups';
 /// Gets the path on local filesystem that will be used to reference local
 /// storage for Sembast.
 Future<Database> getLocalDb() async {
-  var factory = databaseFactoryWeb;
-  var db = await factory.openDatabase('db1');
-  return db;
-
-//  // Add a new record
-//  var key =
-//      await store.add(db, <String, dynamic>{'name': 'Table', 'price': 15});
-//
-//  // Read the record
-//  var value = await store.record(key).get(db);
-//
-//  // Print the value
-//  print(value);
-//
-//  // Close the database
-//  await db.close();
+  if (sembastDb != null) {
+    return sembastDb;
+  } else {
+    var factory = databaseFactoryWeb;
+    var db = await factory.openDatabase('recycling_checkout_db');
+    sembastDb = db;
+    return db;
+  }
 }
 
 /// Gets models from Cloud Firestore, and use to update local
@@ -111,7 +103,7 @@ Future<Classes.Group> getGroup(String groupId) async {
 /// Gets cached models from local Sembast database. These are the models
 /// retrieved from the last successful retrieval of models from Firestore.
 Future<List<Classes.Model>> getCachedModels() async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataModelsName);
   Database localDb = await getLocalDb();
 
   Finder finder = Finder(
@@ -128,7 +120,7 @@ Future<List<Classes.Model>> getCachedModels() async {
 /// Gets cached groups from local Sembast database. These are the groups
 /// retrieved from the last successful retrieval of groups from Firestore.
 Future<List<Classes.Group>> getCachedGroups() async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataGroupsName);
   Database localDb = await getLocalDb();
 
   Finder finder = Finder(
@@ -146,7 +138,7 @@ Future<List<Classes.Group>> getCachedGroups() async {
 /// already stored locally will be deleted and replaced completed with
 /// [models].
 Future<void> updateCachedModels(List<Classes.Model> models) async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataModelsName);
   Database localDb = await getLocalDb();
 
   /// Transform [models] to a format compatible with Sembast.
@@ -169,7 +161,7 @@ Future<void> updateCachedModels(List<Classes.Model> models) async {
 /// already stored locally will be deleted and replaced completed with
 /// [groups].
 Future<void> updateCachedGroups(List<Classes.Group> groups) async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataGroupsName);
   Database localDb = await getLocalDb();
 
   /// Transform [groups] to a format compatible with Sembast.
@@ -184,7 +176,7 @@ Future<void> updateCachedGroups(List<Classes.Group> groups) async {
 
 /// Gets records of items currently checked out.
 Future<List<Classes.CheckedOutRecord>> getRecords() async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataRecordsName);
   Database localDb = await getLocalDb();
   Filter filter = Filter.isNull('checkinTime');
   return store.find(localDb, finder: Finder(
@@ -203,7 +195,7 @@ Future<List<Classes.CheckedOutRecord>> getRecords() async {
 /// if [record] is successfully checked in, and false if [record] is being
 /// queued due to offline write.
 Future<bool> checkin(Classes.CheckedOutRecord record) async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataRecordsName);
   Database localDb = await getLocalDb();
 
   Map toAdd = record.record.toMap();
@@ -226,7 +218,7 @@ Future<bool> checkin(Classes.CheckedOutRecord record) async {
 
 /// Saves the record [record] to local storage. For checking out.
 Future<dynamic> checkout(Classes.CheckedOutRecord record) async {
-  StoreRef store = stringMapStoreFactory.store();
+  StoreRef store = intMapStoreFactory.store(localDbDataRecordsName);
   Database localDb = await getLocalDb();
 
   Map<String, dynamic> toAdd = record.toMap();
