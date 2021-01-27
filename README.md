@@ -20,5 +20,14 @@ Currently, for development, this code can be run in Android Studio.
 
 The app isn't very interesting without checkout options, which require checkout option models to be added to the database. See `models/model.json` for these models' structure, and [here](https://github.com/dscgt/recycling_checkin/blob/master/models/README.md) for more info.
 
+## Deployment
+
+The current deployment method builds this Flutter project as a webapp and deploys it with Github Pages. Do this with the `web-deploy` branch. More information [here](https://flutter.dev/docs/get-started/web#create-and-run) and [here](https://flutter.dev/docs/deployment/web).
+
+1. Make sure our [private Github repo](https://github.gatech.edu/dscgt/recycling_checkin_dist) is cloned to your machine
+1. Build this app for the web with `flutter build web`
+1. Copy the contents of the `build/web` directory to your clone of the private repo
+1. Push the changes of the private repo
+
 ## About
 Made by the [Developer Student Club at Georgia Tech](https://dscgt.club/).
