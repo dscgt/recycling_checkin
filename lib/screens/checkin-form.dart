@@ -94,7 +94,7 @@ class CheckInFormState extends State<CheckInForm> {
     });
   }
 
-  Future<void> _handleConfirmCheckIn(BuildContext context) async {
+  Future<void> _handleConfirmCheckIn() async {
     // Create CheckedOutRecord with the controllers' values for submission
     CheckedOutRecord toSubmit = CheckedOutRecord(
       model: widget.record.model,
@@ -179,7 +179,7 @@ class CheckInFormState extends State<CheckInForm> {
                           loadingAfterButtonPress = true;
                         });
                         try {
-                          await _handleConfirmCheckIn(context);
+                          await _handleConfirmCheckIn();
                           Navigator.of(context).pop(ConfirmAction.CONFIRM);
                           close();
                         } catch (e, st) {
