@@ -8,6 +8,7 @@
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:recycling_checkin/api.dart';
 import 'package:recycling_checkin/screens/checkin.dart';
 import 'package:recycling_checkin/screens/checkout.dart';
 import 'package:recycling_checkin/screens/loading.dart';
@@ -48,7 +49,11 @@ class _MainState extends State<Main> {
 
   /// From https://firebase.flutter.dev/docs/overview/#initializing-flutterfire/
   /// FlutterFire should be initialized before anything else in the app
-  final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp();
+  /// Afterwards, also runs a custom post-initialization function
+  final Future<FirebaseApp> _firebaseInitialization = Firebase.initializeApp().then((fa) {
+    init();
+    return fa;
+  });
 
   _handleTapNavigation(int index) {
     setState(() {

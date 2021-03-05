@@ -25,6 +25,7 @@ dependencies:
   cupertino_icons: ^0.1.2
 
   sembast: ^2.4.7+7
+  sembast_web: ^1.2.0
   path_provider: ^1.5.1
   intl: ^0.16.1 # this is for date localizations
 
