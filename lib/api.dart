@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sembast_web/sembast_web.dart';
 
 final FirebaseFirestore firestore = FirebaseFirestore.instance;
+final String firestoreEmulatorUrl = 'localhost:8080';
 Database sembastDb;
 
 final String localDbDataModelsName = 'dataCategories';
@@ -16,6 +17,14 @@ final String localDbDataGroupsName = 'dataGroups';
 final String recordsCollectionName = 'checkin_records';
 final String modelsCollectionName = 'checkin_models';
 final String groupsCollectionName = 'checkin_groups';
+
+void init() {
+  // if development environment, switch to use Firestore emulator
+  const String env = String.fromEnvironment('ENVIRONMENT');
+  if (env == 'development') {
+    firestore.settings = Settings(host: firestoreEmulatorUrl, sslEnabled: false);
+  }
+}
 
 /// Gets the path on local filesystem that will be used to reference local
 /// storage for Sembast.
